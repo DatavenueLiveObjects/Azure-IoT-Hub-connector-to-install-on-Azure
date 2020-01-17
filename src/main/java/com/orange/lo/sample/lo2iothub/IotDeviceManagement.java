@@ -1,3 +1,10 @@
+/** 
+* Copyright (c) Orange. All Rights Reserved.
+* 
+* This source code is licensed under the MIT license found in the 
+* LICENSE file in the root directory of this source tree. 
+*/
+
 package com.orange.lo.sample.lo2iothub;
 
 import java.io.IOException;
@@ -58,22 +65,17 @@ public class IotDeviceManagement {
 
 	@Scheduled(fixedRateString = "${azure.synchronization-device-interval}")
 	public void synchronizeDevices() throws InterruptedException {
-        LOG.debug("Synchronizing devices ... ");
-
+        LOG.debug("Synchronizing devices... ");
         Set<String> loIds = loDeviceProvider.getDevices().stream().map(d -> d.getId()).collect(Collectors.toSet());
-        
-        ThreadPoolExecutor synchronizingExecutor = new ThreadPoolExecutor(azureProperties.getSynchronizationThreadPoolSize(), 
-        																  azureProperties.getSynchronizationThreadPoolSize(), 
-        																  10, 
-        																  TimeUnit.SECONDS, 
-        																  new ArrayBlockingQueue<Runnable>(loIds.size()));
-        
+        ThreadPoolExecutor synchronizingExecutor =
+				new ThreadPoolExecutor(azureProperties.getSynchronizationThreadPoolSize(), azureProperties.getSynchronizationThreadPoolSize(),
+						10, TimeUnit.SECONDS,
+						new ArrayBlockingQueue<>(loIds.size()));
         for (String deviceId : loIds) {
 			synchronizingExecutor.execute(() -> {
 				createDeviceClient(deviceId);
 			});
 		}
-        
         int synchronizationTimeout = calculateSynchronizationTimeout(loIds.size(), azureProperties.getSynchronizationThreadPoolSize());
         synchronizingExecutor.shutdown();
         if (synchronizingExecutor.awaitTermination(synchronizationTimeout, TimeUnit.SECONDS)) {
@@ -95,10 +97,9 @@ public class IotDeviceManagement {
 			if (device == null) {
 				device = ioTDeviceProvider.createDevice(deviceId);
 				DeviceClient deviceClient = iotClientCache.get(deviceId);
-				// make sure that if device client exists we have to close it  
-				if (deviceClient != null) {
+				// make sure that if device client exists we have to close it
+				if (deviceClient != null)
 					iotClientCache.remove(deviceId);
-				}
 				return createDeviceClient(device);
 			// device exists but device client doesn't
 			} else if (iotClientCache.get(deviceId) == null) {
@@ -111,14 +112,13 @@ public class IotDeviceManagement {
 
 	private DeviceClient createDeviceClient(Device device) {
 		if (iotClientCache.get(device.getDeviceId()) == null ) {
-			String connString = String.format(CONNECTION_STRING_PATTERN, azureProperties.getIotHostName(), device.getDeviceId(), device.getSymmetricKey().getPrimaryKey());
 			try {
+				String connString = String.format(CONNECTION_STRING_PATTERN, azureProperties.getIotHostName(), device.getDeviceId(), device.getSymmetricKey().getPrimaryKey());
 				DeviceClient deviceClient = new DeviceClient(connString, IotHubClientProtocol.MQTT);
 				deviceClient.setMessageCallback(new MessageCallbackMqtt(), device.getDeviceId());
-				deviceClient.setOperationTimeout(azureProperties.getDeviceClientconnectionTimeout());
+				deviceClient.setOperationTimeout(azureProperties.getDeviceClientConnectionTimeout());
 				deviceClient.setRetryPolicy((currentRetryCount,lastException) -> new RetryDecision(false, 0));
 				deviceClient.registerConnectionStatusChangeCallback(new ConnectionStatusChangeCallback(), device.getDeviceId());
-				
 				deviceClient.open();
 				iotClientCache.add(device.getDeviceId(), deviceClient);
 				LOG.info("Device client created for {}", device.getDeviceId());
@@ -151,16 +151,15 @@ public class IotDeviceManagement {
 	}
 	
 	protected class MessageCallbackMqtt implements MessageCallback {
+
+		@Override
         public IotHubMessageResult execute(Message msg, Object context) {
             String deviceId = context.toString();
-            
             if (LOG.isDebugEnabled()) {
-            	LOG.debug("Received message for device: {} with content {}", deviceId, new String(msg.getBytes(), Message.DEFAULT_IOTHUB_MESSAGE_CHARSET));
-            	for (MessageProperty messageProperty : msg.getProperties()){
+            	LOG.debug("Received command for device: {} with content {}", deviceId, new String(msg.getBytes(), Message.DEFAULT_IOTHUB_MESSAGE_CHARSET));
+            	for (MessageProperty messageProperty : msg.getProperties())
             		LOG.debug(messageProperty.getName() + " : " + messageProperty.getValue());
-            	}            	
             }
-            
             loCommandSender.send(deviceId, new String(msg.getBytes()));
             return IotHubMessageResult.COMPLETE;
         }

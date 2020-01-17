@@ -1,3 +1,10 @@
+/** 
+* Copyright (c) Orange. All Rights Reserved.
+* 
+* This source code is licensed under the MIT license found in the 
+* LICENSE file in the root directory of this source tree. 
+*/
+
 package com.orange.lo.sample.lo2iothub.azure;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -11,7 +18,7 @@ public class AzureProperties {
 	private String iotHostName;	
 	private int synchronizationThreadPoolSize;
 	private int messagingThreadPoolSize;
-	private int deviceClientconnectionTimeout;
+	private int deviceClientConnectionTimeout;
 	private String tagPlatformKey; 
 	private String tagPlatformValue;
 
@@ -47,12 +54,12 @@ public class AzureProperties {
 		this.messagingThreadPoolSize = messagingThreadPoolSize;
 	}
 
-	public int getDeviceClientconnectionTimeout() {
-		return deviceClientconnectionTimeout;
+	public int getDeviceClientConnectionTimeout() {
+		return deviceClientConnectionTimeout;
 	}
 
-	public void setDeviceClientconnectionTimeout(int deviceClientconnectionTimeout) {
-		this.deviceClientconnectionTimeout = deviceClientconnectionTimeout;
+	public void setDeviceClientConnectionTimeout(int deviceClientConnectionTimeout) {
+		this.deviceClientConnectionTimeout = deviceClientConnectionTimeout;
 	}
 
 	public String getTagPlatformKey() {

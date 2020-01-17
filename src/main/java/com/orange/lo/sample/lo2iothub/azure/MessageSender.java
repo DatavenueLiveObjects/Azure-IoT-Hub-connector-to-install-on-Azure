@@ -1,3 +1,10 @@
+/** 
+* Copyright (c) Orange. All Rights Reserved.
+* 
+* This source code is licensed under the MIT license found in the 
+* LICENSE file in the root directory of this source tree. 
+*/
+
 package com.orange.lo.sample.lo2iothub.azure;
 
 import java.lang.invoke.MethodHandles;
@@ -27,7 +34,6 @@ public class MessageSender {
 
 	private IotClientCache iotClientCache;
 	private IotDeviceManagement iotDeviceManagement;
-	private BlockingQueue<Runnable> tasks;
     private ThreadPoolExecutor sendingExecutor;
     private Counters counterProvider;
     
@@ -36,7 +42,7 @@ public class MessageSender {
 		this.iotClientCache = iotClientCache;
 		this.iotDeviceManagement = iotDeviceManagement;
 		this.counterProvider = counterProvider;
-		tasks = new LinkedBlockingQueue<>();
+		BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>();
 		sendingExecutor = new ThreadPoolExecutor(azureProperties.getMessagingThreadPoolSize(), azureProperties.getMessagingThreadPoolSize(), 10, TimeUnit.SECONDS, tasks);
 	}
 	
@@ -44,12 +50,12 @@ public class MessageSender {
 	    try {
 			String loClientId = getSourceDeviceId(msg.getPayload());
 			DeviceClient deviceClient = iotClientCache.get(loClientId);
-			if (deviceClient != null) {
+			if (deviceClient != null)
 				sendMessage(msg, deviceClient);
-            } else {
+            else {
                 sendingExecutor.submit(() -> {
-                    	DeviceClient createdDeviceClient = iotDeviceManagement.createDeviceClient(loClientId);
-						sendMessage(msg, createdDeviceClient);
+                	DeviceClient createdDeviceClient = iotDeviceManagement.createDeviceClient(loClientId);
+					sendMessage(msg, createdDeviceClient);
                 });
             }
 	    }

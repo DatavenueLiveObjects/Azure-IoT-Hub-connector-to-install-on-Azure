@@ -1,3 +1,10 @@
+/** 
+* Copyright (c) Orange. All Rights Reserved.
+* 
+* This source code is licensed under the MIT license found in the 
+* LICENSE file in the root directory of this source tree. 
+*/
+
 package com.orange.lo.sample.lo2iothub.azure;
 
 import java.io.IOException;
@@ -12,7 +19,7 @@ import com.microsoft.azure.sdk.iot.service.devicetwin.DeviceTwin;
 @Configuration
 public class AzureConfiguration {
 	
-	AzureProperties azureProperties;
+	private AzureProperties azureProperties;
 	
 	public AzureConfiguration(AzureProperties azureProperties) {
 		this.azureProperties = azureProperties;

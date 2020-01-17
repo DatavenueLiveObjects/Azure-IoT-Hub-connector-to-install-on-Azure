@@ -1,3 +1,10 @@
+/** 
+* Copyright (c) Orange. All Rights Reserved.
+* 
+* This source code is licensed under the MIT license found in the 
+* LICENSE file in the root directory of this source tree. 
+*/
+
 package com.orange.lo.sample.lo2iothub.lo;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -22,12 +29,15 @@ public class LoProperties {
     public String getUri() {
     	return uri;
     }
+
     public void setUri(String uri) {
     	this.uri = uri;
     }
-	public String getApiKey() {
+
+    public String getApiKey() {
 		return apiKey;
 	}
+
 	public String getUsername() {
 		return username;
 	}
@@ -91,6 +101,7 @@ public class LoProperties {
 	public void setKeepAliveIntervalSeconds(int keepAliveIntervalSeconds) {
 		this.keepAliveIntervalSeconds = keepAliveIntervalSeconds;
 	}
+
 	public void setApiKey(String apiKey) {
 		this.apiKey = apiKey;
 	}

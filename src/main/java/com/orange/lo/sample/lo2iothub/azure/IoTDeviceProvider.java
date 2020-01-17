@@ -1,3 +1,10 @@
+/** 
+* Copyright (c) Orange. All Rights Reserved.
+* 
+* This source code is licensed under the MIT license found in the 
+* LICENSE file in the root directory of this source tree. 
+*/
+
 package com.orange.lo.sample.lo2iothub.azure;
 
 import java.io.IOException;
@@ -47,8 +54,8 @@ public class IoTDeviceProvider {
 	
 	public List<IoTDevice> getDevices() {
 		List<IoTDevice> list = Lists.newArrayList();
-		String where = "tags." + azureProperties.getTagPlatformKey() + "=" + "'" + azureProperties.getTagPlatformValue() + "'";
 		try {
+			String where = "tags." + azureProperties.getTagPlatformKey() + "=" + "'" + azureProperties.getTagPlatformValue() + "'";
 			SqlQuery sqlQuery = SqlQuery.createSqlQuery("*", SqlQuery.FromType.DEVICES, where, null);
 			Query queryTwin = deviceTwin.queryTwin(sqlQuery.getQuery());
 			while (deviceTwin.hasNextDeviceTwin(queryTwin)) {
@@ -70,8 +77,8 @@ public class IoTDeviceProvider {
 	}
 	
 	public Device createDevice(String deviceId) {
-		Device device = Device.createFromId(deviceId, null, null);
 		try {
+			Device device = Device.createFromId(deviceId, null, null);
 			registryManager.addDevice(device);
 			setPlatformTag(deviceId);
 			return device;
@@ -82,9 +89,9 @@ public class IoTDeviceProvider {
 	}
 
 	private void setPlatformTag(String deviceId) {
-		Set<Pair> tags = new HashSet<Pair>();
-		tags.add(new Pair(azureProperties.getTagPlatformKey(), azureProperties.getTagPlatformValue()));
 		try {
+			Set<Pair> tags = new HashSet<>();
+			tags.add(new Pair(azureProperties.getTagPlatformKey(), azureProperties.getTagPlatformValue()));
 			DeviceTwinDevice deviceTwinDevice = new DeviceTwinDevice(deviceId);
 			deviceTwinDevice.setTags(tags);
 			deviceTwin.updateTwin(deviceTwinDevice);
