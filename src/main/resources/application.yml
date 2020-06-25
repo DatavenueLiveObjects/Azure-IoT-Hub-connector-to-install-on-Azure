@@ -1,17 +1,20 @@
 lo:
   api-key: YOUR_API_KEY
-  device-url: https://liveobjects.orange-business.com/api/v1/deviceMgt/devices
+  api-url: https://liveobjects.orange-business.com/api
   
   uri: ssl://liveobjects.orange-business.com:8883
-  username: YOUR_USERNAME
+  username: application
   
-  topic: YOUR_TOPIC
+  messages-topic: messages
+  devices-topic: devices
+  
   clientId: mqtt2iot
   recovery-interval: 10000
   completion-timeout: 20000
   connection-timeout: 30000
   qos: 1
   keep-alive-interval-seconds: 0
+  page-size: 20
   
 azure:
   iot-connection-string: YOUR_IOT_CONNECTION_STRING
@@ -32,5 +35,3 @@ azure:
 spring:
   application:
     name: Lo2IotHub
-    
-        

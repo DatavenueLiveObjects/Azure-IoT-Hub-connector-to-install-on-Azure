@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.orange.lo.sample.lo2iot</groupId>
 	<artifactId>lo2iot</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0</version>
 	<name>lo2iot</name>
 	<description>Connector between live object and azure IoT Hub</description>
 

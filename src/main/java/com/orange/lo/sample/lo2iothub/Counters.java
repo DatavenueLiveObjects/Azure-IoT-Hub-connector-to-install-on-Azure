@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class Counters {
+
     private Counter evtReceived, evtAttempt, evtSent, evtFailed;
 
     @Autowired

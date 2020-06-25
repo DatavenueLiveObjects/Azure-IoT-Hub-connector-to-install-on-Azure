@@ -5,8 +5,7 @@
 * LICENSE file in the root directory of this source tree. 
 */
 
-package com.orange.lo.sample.lo2iothub.lo;
-
+package com.orange.lo.sample.lo2iothub.lo.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -17,13 +16,13 @@ public class LoDevice {
 
     private String id;
     private String name;
-    
+
     @JsonCreator
-    public LoDevice(@JsonProperty("id")String id, @JsonProperty("name")String name) {
-		this.id = id;
-		this.name = name;		
-	}
-    
+    public LoDevice(@JsonProperty("id") String id, @JsonProperty("name") String name) {
+        this.id = id;
+        this.name = name;
+    }
+
     public String getId() {
         return this.id;
     }

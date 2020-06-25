@@ -13,104 +13,122 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "lo")
 public class LoProperties {
-	
-	private String apiKey;	
-	private String deviceUrl;	
-	private String uri;
-	private String username;
-	private String topic;
+
+    private String apiKey;
+    private String apiUrl;
+    private String uri;
+    private String username;
+    private String messagesTopic;
+    private String devicesTopic;
     private String clientId;
     private int recoveryInterval;
     private int completionTimeout;
     private int connectionTimeout;
     private int qos;
     private int keepAliveIntervalSeconds;
+    private int pageSize;
 
     public String getUri() {
-    	return uri;
+        return uri;
     }
 
     public void setUri(String uri) {
-    	this.uri = uri;
+        this.uri = uri;
     }
 
     public String getApiKey() {
-		return apiKey;
-	}
+        return apiKey;
+    }
 
-	public String getUsername() {
-		return username;
-	}
+    public String getUsername() {
+        return username;
+    }
 
-	public void setUsername(String username) {
-		this.username = username;
-	}
+    public void setUsername(String username) {
+        this.username = username;
+    }
 
-	public String getTopic() {
-		return topic;
-	}
+    public String getClientId() {
+        return clientId;
+    }
 
-	public void setTopic(String topic) {
-		this.topic = topic;
-	}
+    public void setClientId(String clientId) {
+        this.clientId = clientId;
+    }
 
-	public String getClientId() {
-		return clientId;
-	}
+    public int getRecoveryInterval() {
+        return recoveryInterval;
+    }
 
-	public void setClientId(String clientId) {
-		this.clientId = clientId;
-	}
+    public void setRecoveryInterval(int recoveryInterval) {
+        this.recoveryInterval = recoveryInterval;
+    }
 
-	public int getRecoveryInterval() {
-		return recoveryInterval;
-	}
+    public int getCompletionTimeout() {
+        return completionTimeout;
+    }
 
-	public void setRecoveryInterval(int recoveryInterval) {
-		this.recoveryInterval = recoveryInterval;
-	}
+    public void setCompletionTimeout(int completionTimeout) {
+        this.completionTimeout = completionTimeout;
+    }
 
-	public int getCompletionTimeout() {
-		return completionTimeout;
-	}
+    public int getConnectionTimeout() {
+        return connectionTimeout;
+    }
 
-	public void setCompletionTimeout(int completionTimeout) {
-		this.completionTimeout = completionTimeout;
-	}
+    public void setConnectionTimeout(int connectionTimeout) {
+        this.connectionTimeout = connectionTimeout;
+    }
 
-	public int getConnectionTimeout() {
-		return connectionTimeout;
-	}
+    public int getQos() {
+        return qos;
+    }
 
-	public void setConnectionTimeout(int connectionTimeout) {
-		this.connectionTimeout = connectionTimeout;
-	}
+    public void setQos(int qos) {
+        this.qos = qos;
+    }
 
-	public int getQos() {
-		return qos;
-	}
+    public int getKeepAliveIntervalSeconds() {
+        return keepAliveIntervalSeconds;
+    }
 
-	public void setQos(int qos) {
-		this.qos = qos;
-	}
+    public void setKeepAliveIntervalSeconds(int keepAliveIntervalSeconds) {
+        this.keepAliveIntervalSeconds = keepAliveIntervalSeconds;
+    }
 
-	public int getKeepAliveIntervalSeconds() {
-		return keepAliveIntervalSeconds;
-	}
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
+    }
 
-	public void setKeepAliveIntervalSeconds(int keepAliveIntervalSeconds) {
-		this.keepAliveIntervalSeconds = keepAliveIntervalSeconds;
-	}
+    public int getPageSize() {
+        return pageSize;
+    }
 
-	public void setApiKey(String apiKey) {
-		this.apiKey = apiKey;
-	}
+    public void setPageSize(int pageSize) {
+        this.pageSize = pageSize;
+    }
 
-	public String getDeviceUrl() {
-		return deviceUrl;
-	}
+    public String getDevicesTopic() {
+        return devicesTopic;
+    }
 
-	public void setDeviceUrl(String deviceUrl) {
-		this.deviceUrl = deviceUrl;
-	}
+    public void setDevicesTopic(String devicesTopic) {
+        this.devicesTopic = devicesTopic;
+    }
+
+    public String getMessagesTopic() {
+        return messagesTopic;
+    }
+
+    public void setMessagesTopic(String messagesTopic) {
+        this.messagesTopic = messagesTopic;
+    }
+
+    public String getApiUrl() {
+        return apiUrl;
+    }
+
+    public void setApiUrl(String apiUrl) {
+        this.apiUrl = apiUrl;
+    }
 }

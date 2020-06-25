@@ -69,14 +69,14 @@ All configuration can be found in **application.yaml** file located in src/main/
 ```
 1    lo:
 2      api-key: YOUR_API_KEY
-3      device-url: https://liveobjects.orange-business.com/api/v1/deviceMgt/devices
+3      api-url: https://liveobjects.orange-business.com/api
 4      
 5      uri: ssl://liveobjects.orange-business.com:8883
 6      username: YOUR_USERNAME
 7    
-8      topics: 
-9        - fifo/MESSAGES_TOPIC
-10       - fifo/DEVICES_TOPIC
+8      messages-topic: MESSAGES_TOPIC
+9      devices-topic: DEVICES_TOPIC
+10
 11    
 12     clientId: mqtt2iot
 13     recovery-interval: 10000
@@ -89,7 +89,7 @@ All configuration can be found in **application.yaml** file located in src/main/
 20   azure:
 21     iot-connection-string: YOUR_IOT_CONNECTION_STRING
 22     iot-host-name: YOUR_IOT_HOST_NAME
-23     synchronization-device-interval: 1000000
+23     synchronization-device-interval: 10000
 24     synchronization-thread-pool-size: 40
 25     messaging-thread-pool-size: 40
 26     device-client-connection-timeout: 5000
@@ -109,11 +109,11 @@ All configuration can be found in **application.yaml** file located in src/main/
 You can change all values but the most important are:  
 
 *2* - Live Objects API key with at least DEVICE_R and DEVICE_W roles  
-*3* - Devices endpoint url from Live Objects REST API  
+*3* - REST API endpoint url   
 *5* - Live Objects mqtt url  
-*6* - Live Objects mqtt username    
-*9* - Name of the MQTT queue for the device messages   
-*10* - Name of the MQTT queue for the device created events   
+*6* - Live Objects mqtt username (should be set to **application**)    
+*8* - Name of the MQTT queue for the device messages   
+*9* - Name of the MQTT queue for the device created events   
 *16* - Message QoS  
 *18* - Devices page size   
 *21* - Connection string with host name, shared access key name and shared access key. The connection string should look like this: HostName=your_host_name;SharedAccessKeyName=your_key_name;SharedAccessKey=your_key   

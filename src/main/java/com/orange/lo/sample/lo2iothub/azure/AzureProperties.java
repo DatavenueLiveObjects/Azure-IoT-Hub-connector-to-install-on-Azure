@@ -13,68 +13,68 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "azure")
 public class AzureProperties {
-	
-	private String iotConnectionString;
-	private String iotHostName;	
-	private int synchronizationThreadPoolSize;
-	private int messagingThreadPoolSize;
-	private int deviceClientConnectionTimeout;
-	private String tagPlatformKey; 
-	private String tagPlatformValue;
 
-	public String getIotHostName() {
-		return iotHostName;
-	}
+    private String iotConnectionString;
+    private String iotHostName;
+    private int synchronizationThreadPoolSize;
+    private int messagingThreadPoolSize;
+    private int deviceClientConnectionTimeout;
+    private String tagPlatformKey;
+    private String tagPlatformValue;
 
-	public void setIotHostName(String iotHostName) {
-		this.iotHostName = iotHostName;
-	}
+    public String getIotHostName() {
+        return iotHostName;
+    }
 
-	public String getIotConnectionString() {
-		return iotConnectionString;
-	}
+    public void setIotHostName(String iotHostName) {
+        this.iotHostName = iotHostName;
+    }
 
-	public void setIotConnectionString(String iotConnectionString) {
-		this.iotConnectionString = iotConnectionString;
-	}
+    public String getIotConnectionString() {
+        return iotConnectionString;
+    }
 
-	public int getSynchronizationThreadPoolSize() {
-		return synchronizationThreadPoolSize;
-	}
+    public void setIotConnectionString(String iotConnectionString) {
+        this.iotConnectionString = iotConnectionString;
+    }
 
-	public void setSynchronizationThreadPoolSize(int synchronizationThreadPoolSize) {
-		this.synchronizationThreadPoolSize = synchronizationThreadPoolSize;
-	}
-	
-	public int getMessagingThreadPoolSize() {
-		return messagingThreadPoolSize;
-	}
+    public int getSynchronizationThreadPoolSize() {
+        return synchronizationThreadPoolSize;
+    }
 
-	public void setMessagingThreadPoolSize(int messagingThreadPoolSize) {
-		this.messagingThreadPoolSize = messagingThreadPoolSize;
-	}
+    public void setSynchronizationThreadPoolSize(int synchronizationThreadPoolSize) {
+        this.synchronizationThreadPoolSize = synchronizationThreadPoolSize;
+    }
 
-	public int getDeviceClientConnectionTimeout() {
-		return deviceClientConnectionTimeout;
-	}
+    public int getMessagingThreadPoolSize() {
+        return messagingThreadPoolSize;
+    }
 
-	public void setDeviceClientConnectionTimeout(int deviceClientConnectionTimeout) {
-		this.deviceClientConnectionTimeout = deviceClientConnectionTimeout;
-	}
+    public void setMessagingThreadPoolSize(int messagingThreadPoolSize) {
+        this.messagingThreadPoolSize = messagingThreadPoolSize;
+    }
 
-	public String getTagPlatformKey() {
-		return tagPlatformKey;
-	}
+    public int getDeviceClientConnectionTimeout() {
+        return deviceClientConnectionTimeout;
+    }
 
-	public void setTagPlatformKey(String tagPlatformKey) {
-		this.tagPlatformKey = tagPlatformKey;
-	}
+    public void setDeviceClientConnectionTimeout(int deviceClientConnectionTimeout) {
+        this.deviceClientConnectionTimeout = deviceClientConnectionTimeout;
+    }
 
-	public String getTagPlatformValue() {
-		return tagPlatformValue;
-	}
+    public String getTagPlatformKey() {
+        return tagPlatformKey;
+    }
 
-	public void setTagPlatformValue(String tagPlatformValue) {
-		this.tagPlatformValue = tagPlatformValue;
-	}
+    public void setTagPlatformKey(String tagPlatformKey) {
+        this.tagPlatformKey = tagPlatformKey;
+    }
+
+    public String getTagPlatformValue() {
+        return tagPlatformValue;
+    }
+
+    public void setTagPlatformValue(String tagPlatformValue) {
+        this.tagPlatformValue = tagPlatformValue;
+    }
 }

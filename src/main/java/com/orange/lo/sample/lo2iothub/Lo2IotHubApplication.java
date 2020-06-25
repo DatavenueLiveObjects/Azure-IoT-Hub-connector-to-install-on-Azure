@@ -13,7 +13,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class Lo2IotHubApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(Lo2IotHubApplication.class, args);		
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(Lo2IotHubApplication.class, args);
+    }
 }
