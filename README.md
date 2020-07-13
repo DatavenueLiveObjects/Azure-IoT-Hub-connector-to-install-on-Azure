@@ -134,8 +134,8 @@ You can change all values but the most important are:
 *21* - IoT Hub host name  
 *22* - How many threads will be used in message synchronization process   
 *27* - Name of the MQTT queue for the device messages   
-*29* - Name of the MQTT queue for the device created events   
-*32* - Name of device group   
+*28* - Name of the MQTT queue for the device created events   
+*29* - Name of device group   
 *32* - next IoT Hub (repeat lines 19-29)  
 *36* - Application insights instrumentation key   
 
