@@ -7,33 +7,17 @@
 
 package com.orange.lo.sample.lo2iothub;
 
-import com.microsoft.azure.sdk.iot.device.DeviceClient;
-import com.microsoft.azure.sdk.iot.device.IotHubClientProtocol;
-import com.microsoft.azure.sdk.iot.device.IotHubConnectionStatusChangeCallback;
-import com.microsoft.azure.sdk.iot.device.IotHubConnectionStatusChangeReason;
-import com.microsoft.azure.sdk.iot.device.IotHubMessageResult;
-import com.microsoft.azure.sdk.iot.device.Message;
-import com.microsoft.azure.sdk.iot.device.MessageCallback;
-import com.microsoft.azure.sdk.iot.device.MessageProperty;
-import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
-import com.microsoft.azure.sdk.iot.device.transport.RetryDecision;
-import com.microsoft.azure.sdk.iot.service.Device;
 import com.orange.lo.sample.lo2iothub.azure.AzureProperties;
-import com.orange.lo.sample.lo2iothub.azure.IoTDeviceProvider;
-import com.orange.lo.sample.lo2iothub.azure.IotClientCache;
+import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoApiClient;
-import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 
-import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.net.URISyntaxException;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import javax.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,148 +31,50 @@ import org.springframework.stereotype.Component;
 public class IotDeviceManagement {
 
     private static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-    private static final String CONNECTION_STRING_PATTERN = "HostName=%s;DeviceId=%s;SharedAccessKey=%s";
 
-    private IoTDeviceProvider ioTDeviceProvider;
+    private Map<String, IotHubAdapter> iotHubAdapterMap;
+    private Map<String, MessageProducerSupport> messageProducerSupportMap;
     private LoApiClient loApiClient;
-    private MessageProducerSupport mqttInbound;
-    private LoCommandSender loCommandSender;
     private AzureProperties azureProperties;
-    private IotClientCache iotClientCache;
 
-    public IotDeviceManagement(IoTDeviceProvider ioTDeviceProvider, LoApiClient loApiClient, AzureProperties azureProperties, LoCommandSender loCommandSender, IotClientCache iotClientCache, MessageProducerSupport mqttInbound) {
-        this.ioTDeviceProvider = ioTDeviceProvider;
+    public IotDeviceManagement(Map<String, IotHubAdapter> iotHubAdapterMap, Map<String, MessageProducerSupport> messageProducerSupportMap, LoApiClient loApiClient, AzureProperties azureProperties) {
+        this.iotHubAdapterMap = iotHubAdapterMap;
+        this.messageProducerSupportMap = messageProducerSupportMap;
         this.loApiClient = loApiClient;
         this.azureProperties = azureProperties;
-        this.loCommandSender = loCommandSender;
-        this.iotClientCache = iotClientCache;
-        this.mqttInbound = mqttInbound;
     }
 
-    @PostConstruct
-    public void createActionPolicyIfNeeded() {
-        if (!loApiClient.devicesQueueExists()) {
-            LOG.debug("No devices queue, trying to create...");
-            loApiClient.createDevicesQueue();
-            LOG.debug("Devices queue created");
-        }
-        if (!loApiClient.deviceActionPolicyExists()) {
-            LOG.debug("No devices policy, trying to create...");
-            loApiClient.createDeviceActionPolicy();
-            LOG.debug("Devices policy, created");
-        }
-
-        if (!loApiClient.messagesQueueExists()) {
-            LOG.debug("No messages queue, trying to create...");
-            loApiClient.createMessagesQueue();
-            LOG.debug("Messages queue created");
-        }
-        if (!loApiClient.messageActionPolicyExists()) {
-            LOG.debug("No message policy, trying to create...");
-            loApiClient.createMessageActionPolicy();
-            ;
-            LOG.debug("Messages policy, created");
-        }
-    }
-
-    @Scheduled(fixedRateString = "${azure.synchronization-device-interval}")
+    @Scheduled(fixedRateString = "${lo.synchronization-device-interval}")
     public void synchronizeDevices() throws InterruptedException {
-        LOG.debug("Synchronizing devices... ");
-        Set<String> loIds = loApiClient.getDevices().stream().map(d -> d.getId()).collect(Collectors.toSet());
-        ThreadPoolExecutor synchronizingExecutor = new ThreadPoolExecutor(azureProperties.getSynchronizationThreadPoolSize(), azureProperties.getSynchronizationThreadPoolSize(), 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(loIds.size()));
-        for (String deviceId : loIds) {
-            synchronizingExecutor.execute(() -> {
-                createDeviceClient(deviceId);
-            });
-        }
-        int synchronizationTimeout = calculateSynchronizationTimeout(loIds.size(), azureProperties.getSynchronizationThreadPoolSize());
-        synchronizingExecutor.shutdown();
-        if (synchronizingExecutor.awaitTermination(synchronizationTimeout, TimeUnit.SECONDS)) {
-            Set<String> iotIds = ioTDeviceProvider.getDevices().stream().map(d -> d.getId()).collect(Collectors.toSet());
-            iotIds.removeAll(loIds);
-            iotIds.forEach(id -> {
-                LOG.debug("remove from cache and iot device " + id);
-                deleteDevice(id);
-            });
-        }
-        mqttInbound.start();
-    }
-
-    public void deleteDevice(String deviceId) {
-        iotClientCache.remove(deviceId);
-        ioTDeviceProvider.deleteDevice(deviceId);
-    }
-
-    public DeviceClient createDeviceClient(String deviceId) {
-        synchronized (deviceId.intern()) {
-            Device device = ioTDeviceProvider.getDevice(deviceId);
-            // no device in iot hub
-            if (device == null) {
-                device = ioTDeviceProvider.createDevice(deviceId);
-                DeviceClient deviceClient = iotClientCache.get(deviceId);
-                // make sure that if device client exists we have to close it
-                if (deviceClient != null) {
-                    iotClientCache.remove(deviceId);
-                }
-                return createDeviceClient(device);
-                // device exists but device client doesn't
-            } else if (iotClientCache.get(deviceId) == null) {
-                return createDeviceClient(device);
-            } else {
-                return iotClientCache.get(deviceId);
-            }
-        }
-    }
-
-    private DeviceClient createDeviceClient(Device device) {
-        if (iotClientCache.get(device.getDeviceId()) == null) {
+        azureProperties.getAzureIotHubList().forEach(hubProperties -> {
+            LOG.debug("Synchronizing devices for group " + hubProperties.getLoDevicesGroup());
             try {
-                String connString = String.format(CONNECTION_STRING_PATTERN, azureProperties.getIotHostName(), device.getDeviceId(), device.getSymmetricKey().getPrimaryKey());
-                DeviceClient deviceClient = new DeviceClient(connString, IotHubClientProtocol.MQTT);
-                deviceClient.setMessageCallback(new MessageCallbackMqtt(), device.getDeviceId());
-                deviceClient.setOperationTimeout(azureProperties.getDeviceClientConnectionTimeout());
-                deviceClient.setRetryPolicy((currentRetryCount, lastException) -> new RetryDecision(false, 0));
-                deviceClient.registerConnectionStatusChangeCallback(new ConnectionStatusChangeCallback(), device.getDeviceId());
-                deviceClient.open();
-                iotClientCache.add(device.getDeviceId(), deviceClient);
-                LOG.info("Device client created for {}", device.getDeviceId());
-                return deviceClient;
-            } catch (URISyntaxException | IOException e) {
-                LOG.error("Error while creating device client", e);
-                return null;
-            }
-        }
-        return iotClientCache.get(device.getDeviceId());
-    }
-
-    protected class ConnectionStatusChangeCallback implements IotHubConnectionStatusChangeCallback {
-
-        @Override
-        public void execute(IotHubConnectionStatus status, IotHubConnectionStatusChangeReason statusChangeReason, Throwable throwable, Object callbackContext) {
-
-            if (IotHubConnectionStatus.DISCONNECTED == status) {
-                String deviceId = callbackContext.toString();
-                LOG.debug("Device client disconnected for {}, trying to recreate ...", deviceId);
-                iotClientCache.remove(deviceId);
-                createDeviceClient(deviceId);
-            }
-        }
-    }
-
-    protected class MessageCallbackMqtt implements MessageCallback {
-
-        @Override
-        public IotHubMessageResult execute(Message msg, Object context) {
-            String deviceId = context.toString();
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Received command for device: {} with content {}", deviceId, new String(msg.getBytes(), Message.DEFAULT_IOTHUB_MESSAGE_CHARSET));
-                for (MessageProperty messageProperty : msg.getProperties()) {
-                    LOG.debug(messageProperty.getName() + " : " + messageProperty.getValue());
+                IotHubAdapter iotHubAdapter = iotHubAdapterMap.get(hubProperties.getLoDevicesGroup());
+                Set<String> loIds = loApiClient.getDevices(hubProperties.getLoDevicesGroup()).stream().map(d -> d.getId()).collect(Collectors.toSet());
+                ThreadPoolExecutor synchronizingExecutor = new ThreadPoolExecutor(hubProperties.getSynchronizationThreadPoolSize(), hubProperties.getSynchronizationThreadPoolSize(), 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(loIds.size()));
+                for (String deviceId : loIds) {
+                    synchronizingExecutor.execute(() -> {
+                        iotHubAdapter.createDeviceClient(deviceId);
+                    });
                 }
+                int synchronizationTimeout = calculateSynchronizationTimeout(loIds.size(), hubProperties.getSynchronizationThreadPoolSize());
+                synchronizingExecutor.shutdown();
+
+                if (synchronizingExecutor.awaitTermination(synchronizationTimeout, TimeUnit.SECONDS)) {
+                    Set<String> iotIds = iotHubAdapter.getDevices().stream().map(d -> d.getId()).collect(Collectors.toSet());
+                    iotIds.removeAll(loIds);
+                    iotIds.forEach(id -> {
+                        LOG.debug("remove from cache and iot device " + id);
+                        iotHubAdapter.deleteDevice(id);
+                    });
+                }
+
+            } catch (Exception e) {
+                LOG.error("Error while synchronizing devices", e);
             }
-            loCommandSender.send(deviceId, new String(msg.getBytes()));
-            return IotHubMessageResult.COMPLETE;
-        }
+        });
+
+        messageProducerSupportMap.values().forEach(p -> p.start());
     }
 
     private int calculateSynchronizationTimeout(int devices, int threadPoolSize) {

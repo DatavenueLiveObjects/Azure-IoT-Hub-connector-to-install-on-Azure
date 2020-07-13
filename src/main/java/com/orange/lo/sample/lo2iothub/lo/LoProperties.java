@@ -18,8 +18,6 @@ public class LoProperties {
     private String apiUrl;
     private String uri;
     private String username;
-    private String messagesTopic;
-    private String devicesTopic;
     private String clientId;
     private int recoveryInterval;
     private int completionTimeout;
@@ -106,22 +104,6 @@ public class LoProperties {
 
     public void setPageSize(int pageSize) {
         this.pageSize = pageSize;
-    }
-
-    public String getDevicesTopic() {
-        return devicesTopic;
-    }
-
-    public void setDevicesTopic(String devicesTopic) {
-        this.devicesTopic = devicesTopic;
-    }
-
-    public String getMessagesTopic() {
-        return messagesTopic;
-    }
-
-    public void setMessagesTopic(String messagesTopic) {
-        this.messagesTopic = messagesTopic;
     }
 
     public String getApiUrl() {
