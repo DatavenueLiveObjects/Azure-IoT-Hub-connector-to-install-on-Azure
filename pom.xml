@@ -71,6 +71,10 @@
 		      <artifactId>azure-spring-boot-metrics-starter</artifactId>
 		      <version>2.2.1</version>
 		</dependency>
+		<dependency>
+            <groupId>org.springframework.integration</groupId>
+            <artifactId>spring-integration-jmx</artifactId>
+        </dependency>
 	</dependencies>
 
 	<build>

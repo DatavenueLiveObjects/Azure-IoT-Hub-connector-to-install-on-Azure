@@ -8,7 +8,6 @@
 package com.orange.lo.sample.lo2iothub.azure;
 
 import com.google.common.collect.Lists;
-import com.google.gson.JsonSyntaxException;
 import com.microsoft.azure.sdk.iot.service.Device;
 import com.microsoft.azure.sdk.iot.service.RegistryManager;
 import com.microsoft.azure.sdk.iot.service.devicetwin.DeviceTwin;
@@ -16,33 +15,28 @@ import com.microsoft.azure.sdk.iot.service.devicetwin.DeviceTwinDevice;
 import com.microsoft.azure.sdk.iot.service.devicetwin.Pair;
 import com.microsoft.azure.sdk.iot.service.devicetwin.Query;
 import com.microsoft.azure.sdk.iot.service.devicetwin.SqlQuery;
-import com.microsoft.azure.sdk.iot.service.exceptions.IotHubException;
 import com.microsoft.azure.sdk.iot.service.exceptions.IotHubNotFoundException;
+import com.orange.lo.sample.lo2iothub.exceptions.IotDeviceProviderException;
 
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
-@Component
 public class IoTDeviceProvider {
-
-    private static final Logger LOG = LoggerFactory.getLogger(IoTDeviceProvider.class);
 
     private DeviceTwin deviceTwin;
     private RegistryManager registryManager;
-    private AzureProperties azureProperties;
+    private String tagPlatformKey;
+    private String tagPlatformValue;
 
     @Autowired
-    public IoTDeviceProvider(DeviceTwin deviceTwin, RegistryManager registryManager, AzureProperties azureProperties) {
+    public IoTDeviceProvider(DeviceTwin deviceTwin, RegistryManager registryManager, String tagPlatformKey, String tagPlatformValue) {
         this.deviceTwin = deviceTwin;
         this.registryManager = registryManager;
-        this.azureProperties = azureProperties;
+        this.tagPlatformKey = tagPlatformKey;
+        this.tagPlatformValue = tagPlatformValue;
     }
 
     public Device getDevice(String deviceId) {
@@ -50,33 +44,32 @@ public class IoTDeviceProvider {
             return registryManager.getDevice(deviceId);
         } catch (IotHubNotFoundException e) {
             return null;
-        } catch (JsonSyntaxException | IOException | IotHubException e) {
-            LOG.error("Error while retrieving device ", e);
-            return null;
+        } catch (Exception e) {
+            throw new IotDeviceProviderException("Error while retrieving device ", e);
         }
     }
 
     public List<IoTDevice> getDevices() {
         List<IoTDevice> list = Lists.newArrayList();
         try {
-            String where = "tags." + azureProperties.getTagPlatformKey() + "=" + "'" + azureProperties.getTagPlatformValue() + "'";
+            String where = "tags." + tagPlatformKey + "=" + "'" + tagPlatformValue + "'";
             SqlQuery sqlQuery = SqlQuery.createSqlQuery("*", SqlQuery.FromType.DEVICES, where, null);
             Query queryTwin = deviceTwin.queryTwin(sqlQuery.getQuery());
             while (deviceTwin.hasNextDeviceTwin(queryTwin)) {
                 DeviceTwinDevice deviceTwinDevice = deviceTwin.getNextDeviceTwin(queryTwin);
                 list.add(new IoTDevice(deviceTwinDevice.getDeviceId()));
             }
+            return list;
         } catch (Exception e) {
-            LOG.error("Error while retrieving devices", e);
+            throw new IotDeviceProviderException("Error while retrieving devices", e);
         }
-        return list;
     }
 
     public void deleteDevice(String deviceId) {
         try {
             registryManager.removeDevice(deviceId);
         } catch (Exception e) {
-            LOG.error("Error while removing device", e);
+            throw new IotDeviceProviderException("Error while removing device", e);
         }
     }
 
@@ -87,20 +80,19 @@ public class IoTDeviceProvider {
             setPlatformTag(deviceId);
             return device;
         } catch (Exception e) {
-            LOG.error("Error while creating device", e);
+            throw new IotDeviceProviderException("Error while creating device", e);
         }
-        return null;
     }
 
     private void setPlatformTag(String deviceId) {
         try {
             Set<Pair> tags = new HashSet<>();
-            tags.add(new Pair(azureProperties.getTagPlatformKey(), azureProperties.getTagPlatformValue()));
+            tags.add(new Pair(tagPlatformKey, tagPlatformValue));
             DeviceTwinDevice deviceTwinDevice = new DeviceTwinDevice(deviceId);
             deviceTwinDevice.setTags(tags);
             deviceTwin.updateTwin(deviceTwinDevice);
         } catch (Exception e) {
-            LOG.error("Error while creating device", e);
+            throw new IotDeviceProviderException("Error while creating device", e);
         }
     }
 }

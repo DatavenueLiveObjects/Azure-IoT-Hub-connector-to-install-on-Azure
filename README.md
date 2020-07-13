@@ -18,9 +18,9 @@ Three main features are:
 * **messages synchronization** - every message which will be send from device to Live Objects will appear in IoT Hub
 * **commands synchronization** - every command from IoT Hub will be sent to the devices via Live Objects API
 
-One connector can handle one customer (one IoT Hub). If you have more than one you need to setup one instance of connector per each IoT Hub. 
+One connector can handle many Iot Hubs. 
 
-It can be only one instance of connector per IoT Hub. Two or more instances connected to the same IoT Hub will cause problems.
+It can be only one instance of connector per Live Objects account. Two or more instances connected to the same Live Objects account will cause problems.
 
 The software is an open source toolbox which has to be integrated into an end to end solution. The ordering of messages is not guaranteed to be preserved; the application uses thread pools to run its MQTT and IoT Hub adapters which may cause some messages to arrive in IoT Hub out of order in which they were kept within Live Objects’ MQTT queue.
 Live Objects platform supports load balancing between multiple MQTT subscribers.
@@ -36,11 +36,11 @@ Live Objects platform supports load balancing between multiple MQTT subscribers.
 
 ## Requirements
 In order to run the connector you need to have: 
-* **Live Objects account with MQTT fifo queue API key** which can access the queue (API key generation is described in the [user guide](https://liveobjects.orange-business.com/cms/app/uploads/EN_User-guide-Live-Objects-4.pdf#%5B%7B%22num%22%3A190%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C68%2C574%2C0%5D)), 
-* **Azure account with an IoT Hub created** (creation process is described in official [documentation](https://docs.microsoft.com/en-us/azure/iot-hub/iot-hub-create-through-portal). 
+* **Live Objects account with MQTT fifo queues API key** which can access the queues (API key generation is described in the [user guide](https://liveobjects.orange-business.com/cms/app/uploads/EN_User-guide-Live-Objects-4.pdf#%5B%7B%22num%22%3A190%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C68%2C574%2C0%5D)), 
+* **Azure account with an IoT Hub created (one or many)** (creation process is described in official [documentation](https://docs.microsoft.com/en-us/azure/iot-hub/iot-hub-create-through-portal). 
 * **Azure CLI installed** (installation process is described in official [documentation](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)),  
-* **Application Insights resource created** (creation process is described in official [documentation](https://docs.microsoft.com/pl-pl/azure/azure-monitor/app/create-new-resource)). 
-* **App Service plan created** (creation process is described in official [documentation](https://docs.microsoft.com/en-us/azure/app-service/app-service-plan-manage)). 
+* **Application Insights resource created (per each Iot Hub)** (creation process is described in official [documentation](https://docs.microsoft.com/pl-pl/azure/azure-monitor/app/create-new-resource)). 
+* **App Service plan created (per each Iot Hub)** (creation process is described in official [documentation](https://docs.microsoft.com/en-us/azure/app-service/app-service-plan-manage)). 
 * **Java SE Development Kit 8 installed**
 * **Apache Maven installed**
 
@@ -52,11 +52,13 @@ Logging configuration can be found in **logback.xml** file located in src/main/r
 #### Azure Webapp Maven Plugin
 Deployment to Azure is performed by the Azure Webapp Maven Plugin. Its configuration is included in `pom.xml` file within the connector project.
 The following lines are relevant:
+
 ```
 <resourceGroup>YourResourceGroupName</resourceGroup>
 <appServicePlanName>YourAppServicePlanName</appServicePlanName>
 <appName>lo2iothub</appName>
 ```
+
 The `resourceGroup` and `appServicePlanName` should correspond to values provided during App Service Plan creation. These values can be found in the details of the App Service Plan:  
 
 ![Service Plan 1](./assets/service_plan_1.png) 
@@ -66,45 +68,59 @@ Application name will be used to uniquely identify the deployed connector app.
 
 #### Connector
 All configuration can be found in **application.yaml** file located in src/main/resources
+
 ```
 1    lo:
 2      api-key: YOUR_API_KEY
 3      api-url: https://liveobjects.orange-business.com/api
 4      
 5      uri: ssl://liveobjects.orange-business.com:8883
-6      username: YOUR_USERNAME
+6      username: application
 7    
-8      messages-topic: MESSAGES_TOPIC
-9      devices-topic: DEVICES_TOPIC
-10
-11    
-12     clientId: mqtt2iot
-13     recovery-interval: 10000
-14     completion-timeout: 20000
-15     connection-timeout: 30000
-16     qos: 1
-17     keep-alive-interval-seconds: 0
-18     page-size: 20
-19      
-20   azure:
-21     iot-connection-string: YOUR_IOT_CONNECTION_STRING
-22     iot-host-name: YOUR_IOT_HOST_NAME
-23     synchronization-device-interval: 10000
-24     synchronization-thread-pool-size: 40
-25     messaging-thread-pool-size: 40
-26     device-client-connection-timeout: 5000
-27     tagPlatformKey: platform
-28     tagPlatformValue: LiveObjects
-29     application-insights:
-30       instrumentation-key: YOUR_INSTMENTATION_KEY
-31       channel:
-32         in-process:
-33           developer-mode: true
-34           max-telemetry-buffer-capacity: 500
-35           flush-interval-in-seconds: 5
-36   spring:
-37     application:
-38       name: Lo2IotHub
+8      clientId: mqtt2iot
+9      recovery-interval: 10000
+10     completion-timeout: 20000
+11     connection-timeout: 30000
+12     qos: 1
+13     keep-alive-interval-seconds: 0
+14     page-size: 20
+15     
+16     synchronization-device-interval: 60000
+17 
+18   azure-iot-hub-list:
+19     -
+20       iot-connection-string: YOUR_IOT_CONNECTION_STRING
+21       iot-host-name: YOUR_IOT_HOST_NAME
+22       synchronization-thread-pool-size: 40
+23       device-client-connection-timeout: 5000
+24       tagPlatformKey: platform
+25       tagPlatformValue: LiveObjectsGroup1
+26    
+27       lo-messages-topic: MESSAGES_TOPIC
+28       lo-devices-topic: DEVICES_TOPIC
+29       lo-devices-group: DEVICES_GROUP
+31
+32       (...)
+33          
+34   azure:
+35     application-insights:
+36       instrumentation-key: YOUR_INSTMENTATION_KEY
+37       channel:
+38         in-process:
+39           developer-mode: true
+40           max-telemetry-buffer-capacity: 500
+41           flush-interval-in-seconds: 5
+42
+43   management:
+44     endpoints:
+45       web:
+46         exposure:
+47           include: "*"
+48
+49   spring:
+50     application:
+51       name: Lo2IotHub
+
 ```
 You can change all values but the most important are:  
 
@@ -112,14 +128,16 @@ You can change all values but the most important are:
 *3* - REST API endpoint url   
 *5* - Live Objects mqtt url  
 *6* - Live Objects mqtt username (should be set to **application**)    
-*8* - Name of the MQTT queue for the device messages   
-*9* - Name of the MQTT queue for the device created events   
-*16* - Message QoS  
-*18* - Devices page size   
-*21* - Connection string with host name, shared access key name and shared access key. The connection string should look like this: HostName=your_host_name;SharedAccessKeyName=your_key_name;SharedAccessKey=your_key   
-*22* - IoT Hub host name  
-*25* - How many threads will be used in message synchronization process  
-*30* - Application insights instrumentation key   
+*12* - Message QoS  
+*14* - Devices page size   
+*20* - Connection string with host name, shared access key name and shared access key. The connection string should look like this: HostName=your_host_name;SharedAccessKeyName=your_key_name;SharedAccessKey=your_key   
+*21* - IoT Hub host name  
+*22* - How many threads will be used in message synchronization process
+*27* - Name of the MQTT queue for the device messages   
+*28* - Name of the MQTT queue for the device created events   
+*28* - Name of device group
+*32* - next IoT Hub (repeat lines 19-29)  
+*36* - Application insights instrumentation key   
 
 ##### Generate Live Objects API key
 Login to Live Objects Web Portal an go to **Administration** -> **API keys** 
