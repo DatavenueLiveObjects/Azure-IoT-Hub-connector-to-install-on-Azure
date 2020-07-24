@@ -9,7 +9,7 @@
 * [Installation](#installation)
 
 ## General info
-![Architecture](./assets/architecture.png)
+![Architecture](./assets/architecture2.png)
 
 This repository contains everything you need to create 'Live Objects to Azure IoT Hub' connector. This project is intended for Live Objects users wishing to explore integration patterns with Azure and for organizations already running business logic on Azure planning to work on events from IoT devices sourced via Live Objects.
 
