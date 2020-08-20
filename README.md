@@ -176,7 +176,7 @@ Click **Create a group of device** in the left menu, named it and confirm
 ![Groups 2](./assets/groups_2.png)
 
 #### lo-messages-topic
-Name of the FIFO queue for messages from devices belong to *lo-devices-group*
+Name of the FIFO queue for messages from devices belong to *lo-devices-group*.
 To create such queue you need to login to Orange Web Portal an go to **Data -> FIFO** 
 
 ![FIFO 1](./assets/fifo_1.png)
@@ -195,7 +195,7 @@ Click **Add a routing rule** and give a routing name and click **Next** button
 
 ![Routing 1](./assets/routing_m_2.png)
 
-Choose a message type of "Data message", in **Filters** section select **A filtered selection of messages **, select **Group Criteria** and choose your device group. Click **Next** button
+Choose a message type of **Data message**, in **Filters** section select **A filtered selection of messages**, select **Group Criteria** and choose your device group. Click **Next** button
 
 ![Routing 1](./assets/routing_m_3.png)
 
@@ -223,7 +223,7 @@ Click **Add a routing rule** and give a routing name and click **Next** button
 
 ![Routing 1](./assets/routing_d_2.png)
 
-Choose a message type of **Device created event**, in **Filters** section select **A filtered selection of messages **, select **Group Criteria** and choose your device group. Click **Next** button
+Choose a message type of **Device created event**, in **Filters** section select **A filtered selection of messages**, select **Group Criteria** and choose your device group. Click **Next** button
 
 ![Routing 1](./assets/routing_d_3.png)
 
@@ -231,7 +231,7 @@ Choose **Forward to one or more FIFOs** by clicking **+ FIFO** button and select
 
 ![Routing 1](./assets/routing_d_4.png)
 
-Repeat last step and create new routing for **Device deleted event ** (choose the same fifo as for Device created event) 
+Repeat last step and create new routing for **Device deleted event** (choose the same fifo as for Device created event) 
 
 #### instrumentation-key
 The value of this parameter can be found in the details of Application Insights:
