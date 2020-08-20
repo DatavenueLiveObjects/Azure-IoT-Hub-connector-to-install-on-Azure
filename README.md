@@ -168,42 +168,67 @@ All devices created in IoT Hub have a tag with given value
 #### lo-devices-group
 Name of device group in Live Objects
 To create group you need to login to Orange Web Portal an go to **Devices**
+
 ![Groups 1](./assets/groups_1.png)
+
 Click **Create a group of device** in the left menu, named it and confirm
+
 ![Groups 2](./assets/groups_2.png)
 
 #### lo-messages-topic
 Name of the FIFO queue for messages from devices belong to *lo-devices-group*
 To create such queue you need to login to Orange Web Portal an go to **Data -> FIFO** 
+
 ![FIFO 1](./assets/fifo_1.png)
+
 Click **Add** button and fill fields
+
 ![FIFO 2](./assets/fifo_2.png)
+
 And click **Register** button
 
 Later you need to create routing. Go to **Data -> Routing**
+
 ![Routing 1](./assets/routing_1.png)
+
 Click **Add a routing rule** and give a routing name and click **Next** button
+
 ![Routing 1](./assets/routing_m_2.png)
+
 Choose a message type of "Data message", in **Filters** section select **A filtered selection of messages **, select **Group Criteria** and choose your device group. Click **Next** button
+
 ![Routing 1](./assets/routing_m_3.png)
+
 Choose **Forward to one or more FIFOs** by clicking **+ FIFO** button and select your fifo for storing messages. Click **Complete** button
+
 ![Routing 1](./assets/routing_m_4.png)
 
 #### lo-devices-topic
 Name of the FIFO queue for the device created and deleted events   
 To create such queue you need to login to Orange Web Portal an go to **Data -> FIFO** 
+
 ![FIFO 1](./assets/fifo_1.png)
+
 Click **Add** button and fill fields
+
 ![FIFO 2](./assets/fifo_d_2.png)
+
 And click **Register** button
 
 Later you need to create routing. Go to **Data -> Routing**
+
 ![Routing 1](./assets/routing_1.png)
+
 Click **Add a routing rule** and give a routing name and click **Next** button
+
 ![Routing 1](./assets/routing_d_2.png)
+
 Choose a message type of **Device created event**, in **Filters** section select **A filtered selection of messages **, select **Group Criteria** and choose your device group. Click **Next** button
+
 ![Routing 1](./assets/routing_d_3.png)
+
 Choose **Forward to one or more FIFOs** by clicking **+ FIFO** button and select your fifo for storing devices events. Click **Complete** button
+
 ![Routing 1](./assets/routing_d_4.png)
 
 Repeat last step and create new routing for **Device deleted event ** (choose the same fifo as for Device created event) 
