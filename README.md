@@ -36,11 +36,11 @@ Live Objects platform supports load balancing between multiple MQTT subscribers.
 
 ## Requirements
 In order to run the connector you need to have: 
-* **Live Objects account with MQTT fifo queues API key** which can access the queues (API key generation is described in the [user guide](https://liveobjects.orange-business.com/cms/app/uploads/EN_User-guide-Live-Objects-4.pdf#%5B%7B%22num%22%3A190%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C68%2C574%2C0%5D)), 
-* **Azure account with an IoT Hub created (one or many)** (creation process is described in official [documentation](https://docs.microsoft.com/en-us/azure/iot-hub/iot-hub-create-through-portal). 
-* **Azure CLI installed** (installation process is described in official [documentation](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)),  
-* **Application Insights resource created (per each Iot Hub)** (creation process is described in official [documentation](https://docs.microsoft.com/pl-pl/azure/azure-monitor/app/create-new-resource)). 
-* **App Service plan created (per each Iot Hub)** (creation process is described in official [documentation](https://docs.microsoft.com/en-us/azure/app-service/app-service-plan-manage)). 
+* **Live Objects account** 
+* **Azure account with an IoT Hub created (one or many)** (creation process is described in official [documentation](https://docs.microsoft.com/en-us/azure/iot-hub/iot-hub-create-through-portal) 
+* **Azure CLI installed** (installation process is described in official [documentation](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest))
+* **Application Insights resource created (per each Iot Hub)** (creation process is described in official [documentation](https://docs.microsoft.com/pl-pl/azure/azure-monitor/app/create-new-resource)) 
+* **App Service plan created (per each Iot Hub)** (creation process is described in official [documentation](https://docs.microsoft.com/en-us/azure/app-service/app-service-plan-manage))
 * **Java SE Development Kit 8 installed**
 * **Apache Maven installed**
 
@@ -124,7 +124,7 @@ All configuration can be found in **application.yaml** file located in src/main/
 ```
 You can change all values but the most important are:  
 
-*2* - Live Objects API key with at least DEVICE_R and DEVICE_W roles  
+*2* - Live Objects API key with at least DEVICE_R and BUS_R roles  
 *3* - REST API endpoint url   
 *5* - Live Objects mqtt url  
 *6* - Live Objects mqtt username (should be set to **application**)    
@@ -133,8 +133,8 @@ You can change all values but the most important are:
 *20* - Connection string with host name, shared access key name and shared access key. The connection string should look like this: HostName=your_host_name;SharedAccessKeyName=your_key_name;SharedAccessKey=your_key   
 *21* - IoT Hub host name  
 *22* - How many threads will be used in message synchronization process   
-*27* - Name of the MQTT queue for the device messages   
-*28* - Name of the MQTT queue for the device created events   
+*27* - Name of the FIFO queue for the device messages   
+*28* - Name of the FIFO queue for the device created events   
 *29* - Name of device group   
 *32* - next IoT Hub (repeat lines 19-29)  
 *36* - Application insights instrumentation key   
