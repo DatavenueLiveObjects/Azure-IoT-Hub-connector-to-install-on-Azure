@@ -51,23 +51,23 @@ public class IotDeviceManagement {
             try {
                 IotHubAdapter iotHubAdapter = iotHubAdapterMap.get(hubProperties.getLoDevicesGroup());
                 Set<String> loIds = loApiClient.getDevices(hubProperties.getLoDevicesGroup()).stream().map(d -> d.getId()).collect(Collectors.toSet());
-                ThreadPoolExecutor synchronizingExecutor = new ThreadPoolExecutor(hubProperties.getSynchronizationThreadPoolSize(), hubProperties.getSynchronizationThreadPoolSize(), 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(loIds.size()));
-                for (String deviceId : loIds) {
-                    synchronizingExecutor.execute(() -> {
-                        iotHubAdapter.createDeviceClient(deviceId);
-                    });
+                if (loIds.size() > 0) {
+                    ThreadPoolExecutor synchronizingExecutor = new ThreadPoolExecutor(hubProperties.getSynchronizationThreadPoolSize(), hubProperties.getSynchronizationThreadPoolSize(), 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(loIds.size()));
+                    for (String deviceId : loIds) {
+                        synchronizingExecutor.execute(() -> {
+                            iotHubAdapter.createDeviceClient(deviceId);
+                        });
+                    }
+                    int synchronizationTimeout = calculateSynchronizationTimeout(loIds.size(), hubProperties.getSynchronizationThreadPoolSize());
+                    synchronizingExecutor.shutdown();
+                    synchronizingExecutor.awaitTermination(synchronizationTimeout, TimeUnit.SECONDS);
                 }
-                int synchronizationTimeout = calculateSynchronizationTimeout(loIds.size(), hubProperties.getSynchronizationThreadPoolSize());
-                synchronizingExecutor.shutdown();
-
-                if (synchronizingExecutor.awaitTermination(synchronizationTimeout, TimeUnit.SECONDS)) {
-                    Set<String> iotIds = iotHubAdapter.getDevices().stream().map(d -> d.getId()).collect(Collectors.toSet());
-                    iotIds.removeAll(loIds);
-                    iotIds.forEach(id -> {
-                        LOG.debug("remove from cache and iot device " + id);
-                        iotHubAdapter.deleteDevice(id);
-                    });
-                }
+                Set<String> iotIds = iotHubAdapter.getDevices().stream().map(d -> d.getId()).collect(Collectors.toSet());
+                iotIds.removeAll(loIds);
+                iotIds.forEach(id -> {
+                    LOG.debug("remove from cache and iot device " + id);
+                    iotHubAdapter.deleteDevice(id);
+                });
 
             } catch (Exception e) {
                 LOG.error("Error while synchronizing devices", e);
