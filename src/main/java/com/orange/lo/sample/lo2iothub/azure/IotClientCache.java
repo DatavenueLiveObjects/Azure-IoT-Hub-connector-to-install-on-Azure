@@ -14,9 +14,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.springframework.stereotype.Component;
-
-@Component
 public class IotClientCache {
 
     private Map<String, DeviceClient> map = new ConcurrentHashMap<>();

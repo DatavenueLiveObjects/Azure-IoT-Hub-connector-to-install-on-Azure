@@ -96,9 +96,10 @@ public class LoApiClient {
 
     public List<LoDevice> getDevices(String groupName) {
         List<LoDevice> devices = new ArrayList<>(loProperties.getPageSize());
+        ResponseEntity<LoDevice[]> response;
         for (int offset = 0;; offset++) {
             LOG.trace("Calling LO url {}", getPagedDevicesUrl(offset, groupName));
-            ResponseEntity<LoDevice[]> response = restTemplate.exchange(getPagedDevicesUrl(offset, groupName), HttpMethod.GET, new HttpEntity<>(authenticationHeaders), LoDevice[].class);
+            response = restTemplate.exchange(getPagedDevicesUrl(offset, groupName), HttpMethod.GET, new HttpEntity<>(authenticationHeaders), LoDevice[].class);
             LOG.trace("Got {} devices", response.getBody().length);
             if (response.getBody().length == 0) {
                 break;
