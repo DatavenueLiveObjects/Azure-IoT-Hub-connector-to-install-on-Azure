@@ -1,16 +1,16 @@
-/** 
-* Copyright (c) Orange. All Rights Reserved.
-* 
-* This source code is licensed under the MIT license found in the 
-* LICENSE file in the root directory of this source tree. 
-*/
+/**
+ * Copyright (c) Orange. All Rights Reserved.
+ * <p>
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 package com.orange.lo.sample.lo2iothub.azure;
 
 import com.microsoft.azure.sdk.iot.device.DeviceClient;
 import com.microsoft.azure.sdk.iot.device.IotHubEventCallback;
 import com.microsoft.azure.sdk.iot.device.IotHubStatusCode;
-import com.orange.lo.sample.lo2iothub.Counters;
+import com.orange.lo.sample.lo2iothub.utils.Counters;
 
 import java.lang.invoke.MethodHandles;
 
@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class MessageSender {
 
-    private static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private Counters counterProvider;
 
@@ -40,18 +40,18 @@ public class MessageSender {
         public void execute(IotHubStatusCode status, Object context) {
 
             switch (status) {
-            case OK:
-            case OK_EMPTY:
-                counterProvider.evtSent().increment();
-                break;
-            default:
-                counterProvider.evtFailed().increment();
-                break;
+                case OK:
+                case OK_EMPTY:
+                    counterProvider.evtSent().increment();
+                    break;
+                default:
+                    counterProvider.evtFailed().increment();
+                    break;
             }
 
             if (LOG.isDebugEnabled()) {
                 com.microsoft.azure.sdk.iot.device.Message msg = (com.microsoft.azure.sdk.iot.device.Message) context;
-                LOG.debug("IoT Hub responded to message " + msg.getMessageId() + " with status " + status.name());
+                LOG.debug("IoT Hub responded to message {} with status {}", msg.getMessageId(), status.name());
             }
         }
     }

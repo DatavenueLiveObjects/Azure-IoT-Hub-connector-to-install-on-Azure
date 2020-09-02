@@ -28,7 +28,7 @@ import org.springframework.boot.configurationprocessor.json.JSONObject;
 public class IotHubAdapter {
 
     private static final String CONNECTION_STRING_PATTERN = "HostName=%s;DeviceId=%s;SharedAccessKey=%s";
-    private static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private IoTDeviceProvider ioTDeviceProvider;
     private LoCommandSender loCommandSender;
@@ -43,7 +43,7 @@ public class IotHubAdapter {
         this.messageSender = messageSender;
         this.iotClientCache = iotClientCache;
         this.iotHubProperties = iotHubProperties;
-        executorService = Executors.newCachedThreadPool();
+        this.executorService = Executors.newCachedThreadPool();
     }
 
     public void sendMessage(org.springframework.messaging.Message<String> msg) {
@@ -101,15 +101,16 @@ public class IotHubAdapter {
         if (iotClientCache.get(device.getDeviceId()) == null) {
             try {
                 String connString = String.format(CONNECTION_STRING_PATTERN, iotHubProperties.getIotHostName(), device.getDeviceId(), device.getSymmetricKey().getPrimaryKey());
-                DeviceClient deviceClient = new DeviceClient(connString, IotHubClientProtocol.MQTT);
-                deviceClient.setMessageCallback(new MessageCallbackMqtt(), device.getDeviceId());
-                deviceClient.setOperationTimeout(iotHubProperties.getDeviceClientConnectionTimeout());
-                deviceClient.setRetryPolicy((currentRetryCount, lastException) -> new RetryDecision(false, 0));
-                deviceClient.registerConnectionStatusChangeCallback(new ConnectionStatusChangeCallback(), device.getDeviceId());
-                deviceClient.open();
-                iotClientCache.add(device.getDeviceId(), deviceClient);
-                LOG.info("Device client created for {}", device.getDeviceId());
-                return deviceClient;
+                try (DeviceClient deviceClient = new DeviceClient(connString, IotHubClientProtocol.MQTT)) {
+                    deviceClient.setMessageCallback(new MessageCallbackMqtt(), device.getDeviceId());
+                    deviceClient.setOperationTimeout(iotHubProperties.getDeviceClientConnectionTimeout());
+                    deviceClient.setRetryPolicy((currentRetryCount, lastException) -> new RetryDecision(false, 0));
+                    deviceClient.registerConnectionStatusChangeCallback(new ConnectionStatusChangeCallback(), device.getDeviceId());
+                    deviceClient.open();
+                    iotClientCache.add(device.getDeviceId(), deviceClient);
+                    LOG.info("Device client created for {}", device.getDeviceId());
+                    return deviceClient;
+                }
             } catch (URISyntaxException | IOException e) {
                 LOG.error("Error while creating device client", e);
                 return null;
@@ -144,7 +145,7 @@ public class IotHubAdapter {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Received command for device: {} with content {}", deviceId, new String(msg.getBytes(), Message.DEFAULT_IOTHUB_MESSAGE_CHARSET));
                 for (MessageProperty messageProperty : msg.getProperties()) {
-                    LOG.debug(messageProperty.getName() + " : " + messageProperty.getValue());
+                    LOG.debug("{} : {}", messageProperty.getName(), messageProperty.getValue());
                 }
             }
             try {

@@ -10,9 +10,10 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Actions {
 
-    private List<FifoPublish> fifoPublish = new ArrayList<FifoPublish>();
+    private List<FifoPublish> fifoPublish;
 
     public Actions() {
+        this.fifoPublish = new ArrayList<>();
     }
 
     public List<FifoPublish> getFifoPublish() {

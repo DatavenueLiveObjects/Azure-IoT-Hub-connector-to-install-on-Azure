@@ -33,7 +33,8 @@ public class LoCommandSender {
     }
 
     public void send(String deviceId, String command) {
-        String url = String.format(loProperties.getApiUrl() + COMMAND_URL_PATH, deviceId);
+        String s = loProperties.getApiUrl() + COMMAND_URL_PATH;
+        String url = String.format(s, deviceId);
         try {
             ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<String>(command, authenticationHeaders), Void.class);
             if (!response.getStatusCode().is2xxSuccessful()) {
