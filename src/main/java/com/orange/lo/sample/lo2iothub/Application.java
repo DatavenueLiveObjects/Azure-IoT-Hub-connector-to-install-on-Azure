@@ -11,9 +11,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class Lo2IotHubApplication {
+public class Application {
 
     public static void main(String[] args) {
-        SpringApplication.run(Lo2IotHubApplication.class, args);
+        SpringApplication.run(Application.class, args);
     }
 }

@@ -7,6 +7,7 @@
 
 package com.orange.lo.sample.lo2iothub.lo;
 
+import com.orange.lo.sample.lo2iothub.LiveObjectsProperties;
 import com.orange.lo.sample.lo2iothub.lo.model.LoDevice;
 import com.orange.lo.sample.lo2iothub.lo.model.LoGroup;
 
@@ -17,20 +18,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.PostConstruct;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-@Component
 public class LoApiClient {
 
     private static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -47,22 +43,21 @@ public class LoApiClient {
     private final String GROUPS_PAGED_URL_TEMPLATE;
 
     private RestTemplate restTemplate;
-    private LoProperties loProperties;
+    private LiveObjectsProperties loProperties;
     private HttpHeaders authenticationHeaders;
 
     private Map<String, String> groupsMap = new HashMap<String, String>();
 
-    @Autowired
-    public LoApiClient(RestTemplate restTemplate, LoProperties loProperties, HttpHeaders authenticationHeaders) {
+    public LoApiClient(RestTemplate restTemplate, LiveObjectsProperties loProperties, HttpHeaders authenticationHeaders) {
         this.restTemplate = restTemplate;
         this.loProperties = loProperties;
         this.authenticationHeaders = authenticationHeaders;
         this.DEVICES_PAGED_URL_TEMPLATE = loProperties.getApiUrl() + DEVICES_ENDPOINT + "?limit=" + loProperties.getPageSize() + "&offset=%d&groupId=%s&fields=id,name,group";
         this.GROUPS_PAGED_URL_TEMPLATE = loProperties.getApiUrl() + GROOUPS_ENDPOINT + "?limit=" + loProperties.getPageSize() + "&offset=" + "%d";
+        initialize();
     }
 
-    @PostConstruct
-    public void postConstruct() {
+    private void initialize() {
         LOG.info("Managing groups of devices");
 
         try {
