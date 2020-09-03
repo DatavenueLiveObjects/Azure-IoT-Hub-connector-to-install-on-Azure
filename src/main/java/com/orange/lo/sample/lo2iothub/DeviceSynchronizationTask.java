@@ -7,6 +7,7 @@
 
 package com.orange.lo.sample.lo2iothub;
 
+import com.orange.lo.sample.lo2iothub.azure.IoTDevice;
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoApiClient;
 
@@ -17,13 +18,14 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import com.orange.lo.sample.lo2iothub.lo.model.LoDevice;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.integration.endpoint.MessageProducerSupport;
 
 public class DeviceSynchronizationTask implements Runnable {
 
-    private static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private IotHubAdapter iotHubAdapter;
     private MessageProducerSupport messageProducerSupport;
@@ -43,22 +45,22 @@ public class DeviceSynchronizationTask implements Runnable {
         LOG.debug("Synchronizing devices for group " + azureIotHubProperties.getLoDevicesGroup());
         try {
 
-            Set<String> loIds = loApiClient.getDevices(azureIotHubProperties.getLoDevicesGroup()).stream().map(d -> d.getId()).collect(Collectors.toSet());
-            if (loIds.size() > 0) {
+            Set<String> loIds = loApiClient.getDevices(azureIotHubProperties.getLoDevicesGroup()).stream().map(LoDevice::getId).collect(Collectors.toSet());
+            if (!loIds.isEmpty()) {
                 ThreadPoolExecutor synchronizingExecutor = new ThreadPoolExecutor(azureIotHubProperties.getSynchronizationThreadPoolSize(), azureIotHubProperties.getSynchronizationThreadPoolSize(), 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(loIds.size()));
                 for (String deviceId : loIds) {
-                    synchronizingExecutor.execute(() -> {
-                        iotHubAdapter.createDeviceClient(deviceId);
-                    });
+                    synchronizingExecutor.execute(() ->
+                            iotHubAdapter.createDeviceClient(deviceId)
+                    );
                 }
                 int synchronizationTimeout = calculateSynchronizationTimeout(loIds.size(), azureIotHubProperties.getSynchronizationThreadPoolSize());
                 synchronizingExecutor.shutdown();
                 synchronizingExecutor.awaitTermination(synchronizationTimeout, TimeUnit.SECONDS);
             }
-            Set<String> iotIds = iotHubAdapter.getDevices().stream().map(d -> d.getId()).collect(Collectors.toSet());
+            Set<String> iotIds = iotHubAdapter.getDevices().stream().map(IoTDevice::getId).collect(Collectors.toSet());
             iotIds.removeAll(loIds);
             iotIds.forEach(id -> {
-                LOG.debug("remove from cache and iot device " + id);
+                LOG.debug("remove from cache and iot device {}", id);
                 iotHubAdapter.deleteDevice(id);
             });
 

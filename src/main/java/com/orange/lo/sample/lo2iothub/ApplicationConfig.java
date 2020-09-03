@@ -1,4 +1,4 @@
-/** 
+/**
 * Copyright (c) Orange. All Rights Reserved.
 * 
 * This source code is licensed under the MIT license found in the 
@@ -59,7 +59,7 @@ public class ApplicationConfig {
     private static final String DEVICE_CREATED_MESSAGE_TYPE = "deviceCreated";
     private static final String DATA_MESSAGE_TYPE = "dataMessage";
 
-    private static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private Counters counterProvider;
     private IntegrationFlowContext integrationFlowContext;
@@ -136,7 +136,7 @@ public class ApplicationConfig {
     }
 
     private IntegrationFlow mqttInFlow(IotHubAdapter iotHubAdapter, MessageProducerSupport messageProducerSupport) {
-        return IntegrationFlows.from(messageProducerSupport).<String, String>route(msg -> getMesageType(msg), mapping -> mapping.resolutionRequired(false).subFlowMapping(DATA_MESSAGE_TYPE, subflow -> subflow.handle(msg -> {
+        return IntegrationFlows.from(messageProducerSupport).<String, String>route(this::getMesageType, mapping -> mapping.resolutionRequired(false).subFlowMapping(DATA_MESSAGE_TYPE, subflow -> subflow.handle(msg -> {
             counterProvider.evtReceived().increment();
             iotHubAdapter.sendMessage((Message<String>) msg);
         })).subFlowMapping(DEVICE_CREATED_MESSAGE_TYPE, subflow -> subflow.handle(msg -> {
