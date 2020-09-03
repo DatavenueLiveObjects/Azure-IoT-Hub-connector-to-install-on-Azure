@@ -11,6 +11,7 @@ import com.microsoft.azure.sdk.iot.device.MessageProperty;
 import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.microsoft.azure.sdk.iot.device.transport.RetryDecision;
 import com.microsoft.azure.sdk.iot.service.Device;
+import com.orange.lo.sample.lo2iothub.AzureIotHubProperties;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 
 import java.io.IOException;

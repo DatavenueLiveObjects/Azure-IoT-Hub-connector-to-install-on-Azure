@@ -5,14 +5,9 @@
 * LICENSE file in the root directory of this source tree. 
 */
 
-package com.orange.lo.sample.lo2iothub.lo;
+package com.orange.lo.sample.lo2iothub;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
-
-@Component
-@ConfigurationProperties(prefix = "lo")
-public class LoProperties {
+public class LiveObjectsProperties {
 
     private String apiKey;
     private String apiUrl;
@@ -25,6 +20,7 @@ public class LoProperties {
     private int qos;
     private int keepAliveIntervalSeconds;
     private int pageSize;
+    private int synchronizationDeviceInterval;
 
     public String getUri() {
         return uri;
@@ -112,5 +108,13 @@ public class LoProperties {
 
     public void setApiUrl(String apiUrl) {
         this.apiUrl = apiUrl;
+    }
+
+    public int getSynchronizationDeviceInterval() {
+        return synchronizationDeviceInterval;
+    }
+
+    public void setSynchronizationDeviceInterval(int synchronizationDeviceInterval) {
+        this.synchronizationDeviceInterval = synchronizationDeviceInterval;
     }
 }

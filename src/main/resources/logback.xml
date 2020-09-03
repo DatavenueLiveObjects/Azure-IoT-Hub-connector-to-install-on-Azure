@@ -4,7 +4,7 @@
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
-    <logger name="com.orange.lo.sample.lo2iothub" level="DEBUG" />  
+    <logger name="com.orange.lo.sample.lo2iothub" level="TRACE" />  
     <logger name="com.microsoft.azure" level="ERROR" />
     
     <root level="INFO">

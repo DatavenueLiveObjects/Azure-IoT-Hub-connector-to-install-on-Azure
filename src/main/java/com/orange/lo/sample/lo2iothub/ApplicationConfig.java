@@ -9,22 +9,18 @@ package com.orange.lo.sample.lo2iothub;
 
 import com.microsoft.azure.sdk.iot.service.RegistryManager;
 import com.microsoft.azure.sdk.iot.service.devicetwin.DeviceTwin;
-import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
-import com.orange.lo.sample.lo2iothub.azure.AzureProperties;
 import com.orange.lo.sample.lo2iothub.azure.IoTDeviceProvider;
 import com.orange.lo.sample.lo2iothub.azure.IotClientCache;
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.azure.MessageSender;
 import com.orange.lo.sample.lo2iothub.exceptions.InitializationException;
+import com.orange.lo.sample.lo2iothub.lo.LoApiClient;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
-import com.orange.lo.sample.lo2iothub.lo.LoProperties;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,7 +33,7 @@ import org.springframework.boot.configurationprocessor.json.JSONException;
 import org.springframework.boot.configurationprocessor.json.JSONObject;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.http.HttpHeaders;
 import org.springframework.integration.config.EnableIntegration;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
@@ -48,10 +44,13 @@ import org.springframework.integration.mqtt.core.MqttPahoClientFactory;
 import org.springframework.integration.mqtt.inbound.MqttPahoMessageDrivenChannelAdapter;
 import org.springframework.integration.mqtt.support.DefaultPahoMessageConverter;
 import org.springframework.messaging.Message;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.web.client.RestTemplate;
 
 @EnableIntegration
 @Configuration
-public class Lo2IotHubApplicationConfig {
+public class ApplicationConfig {
 
     private static final String DEVICE_ID_FIELD = "deviceId";
     private static final String TYPE_FIELD = "type";
@@ -63,66 +62,67 @@ public class Lo2IotHubApplicationConfig {
     private static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private Counters counterProvider;
-    private IntegrationFlowContext integrationflowContext;
-    private LoProperties loProperties;
-    private AzureProperties azureProperties;
-    private LoCommandSender loCommandSender;
+    private IntegrationFlowContext integrationFlowContext;
+    private ApplicationProperties applicationProperties;
     private MessageSender messageSender;
 
     @Autowired
-    public Lo2IotHubApplicationConfig(Counters counterProvider, IntegrationFlowContext integrationflowContext, LoProperties loProperties, AzureProperties azureProperties, GenericApplicationContext genericApplicationContext, LoCommandSender loCommandSender, MessageSender messageSender) {
+    public ApplicationConfig(Counters counterProvider, IntegrationFlowContext integrationflowContext, MessageSender messageSender, ApplicationProperties applicationProperties) {
         this.counterProvider = counterProvider;
-        this.integrationflowContext = integrationflowContext;
-        this.loProperties = loProperties;
-        this.azureProperties = azureProperties;
-        this.loCommandSender = loCommandSender;
+        this.integrationFlowContext = integrationflowContext;
         this.messageSender = messageSender;
+        this.applicationProperties = applicationProperties;
 
     }
 
     @Bean
-    public Map<String, IotHubAdapter> iotHubAdapterMap() {
-        Map<String, IotHubAdapter> map = new HashMap<String, IotHubAdapter>();
+    public TaskScheduler taskScheduler() {
+        return new ThreadPoolTaskScheduler();
+    }
 
-        azureProperties.getAzureIotHubList().forEach(hubProperties -> {
-            try {
-                DeviceTwin deviceTwin = DeviceTwin.createFromConnectionString(hubProperties.getIotConnectionString());
-                RegistryManager registryManager = RegistryManager.createFromConnectionString(hubProperties.getIotConnectionString());
-                IoTDeviceProvider ioTDeviceProvider = new IoTDeviceProvider(deviceTwin, registryManager, hubProperties.getTagPlatformKey(), hubProperties.getTagPlatformValue());
-                IotClientCache iotClientCache = new IotClientCache();
-                map.put(hubProperties.getLoDevicesGroup(), new IotHubAdapter(ioTDeviceProvider, loCommandSender, messageSender, iotClientCache, hubProperties));
-            } catch (IOException e) {
-                throw new InitializationException(e);
-            }
+    @Bean
+    public void test() {
+        TaskScheduler taskScheduler = taskScheduler();
+
+        applicationProperties.getTenantList().forEach(tenantProperties -> {
+            LiveObjectsProperties liveObjectsProperties = tenantProperties.getLiveObjectsProperties();
+            List<AzureIotHubProperties> azureIotHubList = tenantProperties.getAzureIotHubList();
+
+            LoApiClient loApiClient = new LoApiClient(new RestTemplate(), liveObjectsProperties, getAuthenticationHeaders(liveObjectsProperties.getApiKey()));
+
+            azureIotHubList.forEach(azureIotHubProperties -> {
+                try {
+                    DeviceTwin deviceTwin = DeviceTwin.createFromConnectionString(azureIotHubProperties.getIotConnectionString());
+                    RegistryManager registryManager = RegistryManager.createFromConnectionString(azureIotHubProperties.getIotConnectionString());
+                    IoTDeviceProvider ioTDeviceProvider = new IoTDeviceProvider(deviceTwin, registryManager, azureIotHubProperties.getTagPlatformKey(), azureIotHubProperties.getTagPlatformValue());
+                    IotClientCache iotClientCache = new IotClientCache();
+                    LoCommandSender loCommandSender2 = new LoCommandSender(new RestTemplate(), getAuthenticationHeaders(liveObjectsProperties.getApiKey()), liveObjectsProperties);
+                    IotHubAdapter iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, loCommandSender2, messageSender, iotClientCache, azureIotHubProperties);
+
+                    MessageProducerSupport mqttInbound = mqttInbound(azureIotHubProperties, liveObjectsProperties);
+                    IntegrationFlow mqttInFlow = mqttInFlow(iotHubAdapter, mqttInbound);
+                    integrationFlowContext.registration(mqttInFlow).id(azureIotHubProperties.getLoDevicesGroup()).register();
+
+                    DeviceSynchronizationTask deviceSynchronizationTask = new DeviceSynchronizationTask(iotHubAdapter, mqttInbound, loApiClient, azureIotHubProperties);
+                    taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, Duration.ofSeconds(liveObjectsProperties.getSynchronizationDeviceInterval()));
+
+                } catch (IOException e) {
+                    throw new InitializationException(e);
+                }
+            });
+
         });
-        return map;
     }
 
-    @Bean
-    public Map<String, MessageProducerSupport> messageProducerSupportMap() {
-        Map<String, MessageProducerSupport> map = new HashMap<String, MessageProducerSupport>();
-        azureProperties.getAzureIotHubList().forEach(hubProperties -> {
-            map.put(hubProperties.getLoDevicesGroup(), mqttInbound(hubProperties));
-        });
-        return map;
+    private HttpHeaders getAuthenticationHeaders(String apiKey) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "application/json");
+        headers.set("X-API-KEY", apiKey);
+        headers.set("X-Total-Count", "true");
+        return headers;
     }
 
-    @Bean
-    public List<IntegrationFlow> integrationFlowList() {
-        List<IntegrationFlow> list = new ArrayList<IntegrationFlow>();
-        Map<String, IotHubAdapter> iotHubAdapterMap = iotHubAdapterMap();
-        Map<String, MessageProducerSupport> messageProducerSupportMap = messageProducerSupportMap();
-
-        azureProperties.getAzureIotHubList().forEach(hubProperties -> {
-            IntegrationFlow mqttInFlow = mqttInFlow(iotHubAdapterMap.get(hubProperties.getLoDevicesGroup()), messageProducerSupportMap.get(hubProperties.getLoDevicesGroup()));
-            list.add(mqttInFlow);
-            integrationflowContext.registration(mqttInFlow).id(hubProperties.getLoDevicesGroup()).register();
-        });
-        return list;
-    }
-
-    @Bean
-    public MqttPahoClientFactory mqttClientFactory() {
+    public MqttPahoClientFactory mqttClientFactory(LiveObjectsProperties loProperties) {
         LOG.info("Connecting to mqtt server: {}", loProperties.getUri());
         DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
         MqttConnectOptions opts = new MqttConnectOptions();
@@ -152,9 +152,9 @@ public class Lo2IotHubApplicationConfig {
         })).defaultSubFlowMapping(subflow -> subflow.handle(msg -> LOG.error("Unknow message type of message: {}", msg)))).get();
     }
 
-    private MessageProducerSupport mqttInbound(AzureIotHubProperties hubProperties) {
+    private MessageProducerSupport mqttInbound(AzureIotHubProperties hubProperties, LiveObjectsProperties loProperties) {
         LOG.info("Connecting to mqtt topics: {},{}", hubProperties.getLoMessagesTopic(), hubProperties.getLoDevicesTopic());
-        MqttPahoMessageDrivenChannelAdapter adapter = new MqttPahoMessageDrivenChannelAdapter(loProperties.getClientId() + UUID.randomUUID(), mqttClientFactory(), new String[] { "fifo/" + hubProperties.getLoMessagesTopic(), "fifo/" + hubProperties.getLoDevicesTopic() });
+        MqttPahoMessageDrivenChannelAdapter adapter = new MqttPahoMessageDrivenChannelAdapter(loProperties.getClientId() + UUID.randomUUID(), mqttClientFactory(loProperties), "fifo/" + hubProperties.getLoMessagesTopic(), "fifo/" + hubProperties.getLoDevicesTopic());
 
         adapter.setAutoStartup(false);
         adapter.setRecoveryInterval(loProperties.getRecoveryInterval());

@@ -5,17 +5,13 @@
 * LICENSE file in the root directory of this source tree. 
 */
 
-package com.orange.lo.sample.lo2iothub.azure;
+package com.orange.lo.sample.lo2iothub;
 
 import java.util.List;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
+public class TenantProperties {
 
-@Component
-@ConfigurationProperties()
-public class AzureProperties {
-
+    private LiveObjectsProperties liveObjectsProperties;
     private List<AzureIotHubProperties> azureIotHubList;
 
     public List<AzureIotHubProperties> getAzureIotHubList() {
@@ -24,5 +20,13 @@ public class AzureProperties {
 
     public void setAzureIotHubList(List<AzureIotHubProperties> azureIotHubList) {
         this.azureIotHubList = azureIotHubList;
+    }
+
+    public LiveObjectsProperties getLiveObjectsProperties() {
+        return liveObjectsProperties;
+    }
+
+    public void setLiveObjectsProperties(LiveObjectsProperties liveObjectsProperties) {
+        this.liveObjectsProperties = liveObjectsProperties;
     }
 }
