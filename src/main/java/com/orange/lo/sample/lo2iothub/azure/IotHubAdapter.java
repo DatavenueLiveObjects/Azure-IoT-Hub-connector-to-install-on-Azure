@@ -102,16 +102,15 @@ public class IotHubAdapter {
         if (iotClientCache.get(device.getDeviceId()) == null) {
             try {
                 String connString = String.format(CONNECTION_STRING_PATTERN, iotHubProperties.getIotHostName(), device.getDeviceId(), device.getSymmetricKey().getPrimaryKey());
-                try (DeviceClient deviceClient = new DeviceClient(connString, IotHubClientProtocol.MQTT)) {
-                    deviceClient.setMessageCallback(new MessageCallbackMqtt(), device.getDeviceId());
-                    deviceClient.setOperationTimeout(iotHubProperties.getDeviceClientConnectionTimeout());
-                    deviceClient.setRetryPolicy((currentRetryCount, lastException) -> new RetryDecision(false, 0));
-                    deviceClient.registerConnectionStatusChangeCallback(new ConnectionStatusChangeCallback(), device.getDeviceId());
-                    deviceClient.open();
-                    iotClientCache.add(device.getDeviceId(), deviceClient);
-                    LOG.info("Device client created for {}", device.getDeviceId());
-                    return deviceClient;
-                }
+                DeviceClient deviceClient = new DeviceClient(connString, IotHubClientProtocol.MQTT);
+                deviceClient.setMessageCallback(new MessageCallbackMqtt(), device.getDeviceId());
+                deviceClient.setOperationTimeout(iotHubProperties.getDeviceClientConnectionTimeout());
+                deviceClient.setRetryPolicy((currentRetryCount, lastException) -> new RetryDecision(false, 0));
+                deviceClient.registerConnectionStatusChangeCallback(new ConnectionStatusChangeCallback(), device.getDeviceId());
+                deviceClient.open();
+                iotClientCache.add(device.getDeviceId(), deviceClient);
+                LOG.info("Device client created for {}", device.getDeviceId());
+                return deviceClient;
             } catch (URISyntaxException | IOException e) {
                 LOG.error("Error while creating device client", e);
                 return null;

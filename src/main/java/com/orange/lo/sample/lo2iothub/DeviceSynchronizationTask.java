@@ -42,7 +42,7 @@ public class DeviceSynchronizationTask implements Runnable {
     @Override
     public void run() {
 
-        LOG.debug("Synchronizing devices for group " + azureIotHubProperties.getLoDevicesGroup());
+        LOG.debug("Synchronizing devices for group {}", azureIotHubProperties.getLoDevicesGroup());
         try {
 
             Set<String> loIds = loApiClient.getDevices(azureIotHubProperties.getLoDevicesGroup()).stream().map(LoDevice::getId).collect(Collectors.toSet());
