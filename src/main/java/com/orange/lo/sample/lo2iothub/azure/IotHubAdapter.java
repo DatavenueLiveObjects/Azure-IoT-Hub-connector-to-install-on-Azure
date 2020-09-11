@@ -11,6 +11,7 @@ import com.microsoft.azure.sdk.iot.device.MessageProperty;
 import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.microsoft.azure.sdk.iot.device.transport.RetryDecision;
 import com.microsoft.azure.sdk.iot.service.Device;
+import com.orange.lo.sample.lo2iothub.AzureIotHubProperties;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 
 import java.io.IOException;
@@ -28,7 +29,7 @@ import org.springframework.boot.configurationprocessor.json.JSONObject;
 public class IotHubAdapter {
 
     private static final String CONNECTION_STRING_PATTERN = "HostName=%s;DeviceId=%s;SharedAccessKey=%s";
-    private static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private IoTDeviceProvider ioTDeviceProvider;
     private LoCommandSender loCommandSender;
@@ -43,7 +44,7 @@ public class IotHubAdapter {
         this.messageSender = messageSender;
         this.iotClientCache = iotClientCache;
         this.iotHubProperties = iotHubProperties;
-        executorService = Executors.newCachedThreadPool();
+        this.executorService = Executors.newCachedThreadPool();
     }
 
     public void sendMessage(org.springframework.messaging.Message<String> msg) {
@@ -144,7 +145,7 @@ public class IotHubAdapter {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Received command for device: {} with content {}", deviceId, new String(msg.getBytes(), Message.DEFAULT_IOTHUB_MESSAGE_CHARSET));
                 for (MessageProperty messageProperty : msg.getProperties()) {
-                    LOG.debug(messageProperty.getName() + " : " + messageProperty.getValue());
+                    LOG.debug("{} : {}", messageProperty.getName(), messageProperty.getValue());
                 }
             }
             try {

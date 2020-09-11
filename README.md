@@ -18,7 +18,7 @@ Three main features are:
 * **messages synchronization** - every message which will be send from device to Live Objects will appear in IoT Hub
 * **commands synchronization** - every command from IoT Hub will be sent to the devices via Live Objects API
 
-One connector can handle many Iot Hubs. 
+One connector can handle many Live Objects accounts and Iot Hubs. 
 
 It can be only one instance of connector per Live Objects account. Two or more instances connected to the same Live Objects account will cause problems.
 
@@ -49,56 +49,72 @@ In order to run the connector you need to have:
 All configuration can be found in **application.yaml** file located in src/main/resources
 
 ```
-1    lo:
-2      api-key: YOUR_API_KEY
-3      api-url: https://liveobjects.orange-business.com/api
-4      
-5      uri: ssl://liveobjects.orange-business.com:8883
-6      username: application
-7    
-8      clientId: mqtt2iot
-9      recovery-interval: 10000
-10     completion-timeout: 30000
-11     connection-timeout: 30
-12     keep-alive-interval-seconds: 0
-13     qos: 1
-14     page-size: 20
-15     
-16     synchronization-device-interval: 60000
-17 
-18   azure-iot-hub-list:
-19     -
-20       iot-connection-string: YOUR_IOT_CONNECTION_STRING
-21       iot-host-name: YOUR_IOT_HOST_NAME
-22       synchronization-thread-pool-size: 10
-23       device-client-connection-timeout: 5000
-24       tagPlatformKey: platform
-25       tagPlatformValue: LiveObjectsGroup1
-26    
-27       lo-devices-group: DEVICES_GROUP
-28       lo-messages-topic: MESSAGES_TOPIC
-29       lo-devices-topic: DEVICES_TOPIC
-31
-32       (...)
-33          
-34   azure:
-35     application-insights:
-36       instrumentation-key: YOUR_INSTMENTATION_KEY
-37
-38   management:
-39     endpoints:
-40       web:
-41         exposure:
-42           include: "*"
-43
-44   spring:
-45     application:
-46       name: Lo2IotHub
-
+1    tenant-list:
+2      - 
+3        live-objects-properties:
+4          api-key: YOUR_API_KEY
+5          api-url: https://liveobjects.orange-business.com/api
+6      
+7          uri: ssl://liveobjects.orange-business.com:8883
+8          username: application
+9
+10         clientId: mqtt2iot
+11         recovery-interval: 10000
+12         completion-timeout: 20000
+13         connection-timeout: 30000
+14         qos: 1
+15         keep-alive-interval-seconds: 0
+16         page-size: 20
+17  
+18         synchronization-device-interval: 10
+19  
+20       azure-iot-hub-list:
+21         -
+22           iot-connection-string: YOUR_IOT_CONNECTION_STRING
+23           iot-host-name: YOUR_IOT_HOST_NAME
+24           synchronization-thread-pool-size: 40
+25           device-client-connection-timeout: 5000
+26           tagPlatformKey: platform
+27           tagPlatformValue: LiveObjectsGroupIoT1
+28    
+29           lo-messages-topic: MESSAGES_TOPIC
+30           lo-devices-topic: DEVICES_TOPIC
+31           lo-devices-group: DEVICES_GROUP
+32
+33         -
+34           iot-connection-string: YOUR_IOT_CONNECTION_STRING
+35           iot-host-name: YOUR_IOT_HOST_NAME
+36           synchronization-thread-pool-size: 40
+37           device-client-connection-timeout: 5000
+38           tagPlatformKey: platform
+39           tagPlatformValue: LiveObjectsGroupIoT1
+40    
+41           lo-messages-topic: MESSAGES_TOPIC
+42           lo-devices-topic: DEVICES_TOPIC
+43           lo-devices-group: DEVICES_GROUP
+44
+45   azure:
+46     application-insights:
+47       instrumentation-key: YOUR_INSTMENTATION_KEY
+48       channel:
+49         in-process:
+50           developer-mode: true
+51           max-telemetry-buffer-capacity: 500
+52           flush-interval-in-seconds: 5
+53
+54   management:
+55     endpoints:
+56       web:
+57         exposure:
+58           include: "*"
+59
+60   spring:
+61     application:
+62       name: Lo2IotHub
 ```
 
 #### api-key
-Live Objects API key with at least DEVICE_R and BUS_R roles
+Live Objects API key with at least DEVICE_R, DEVICE_W and BUS_R roles
 
 Login to Live Objects Web Portal an go to **Administration** -> **API keys** 
 
@@ -106,7 +122,7 @@ Login to Live Objects Web Portal an go to **Administration** -> **API keys**
 
 Click **Add** button and fill fields. 
 
-![Api Keys 2](./assets/api_key_2.png)
+![Api Keys 2](./assets/api_key_2_.png)
 
 To  validate  the  creation  of  the  key,  click  on  the  **Create**  button.  Your  key  is  generated  in  the form of an alphanumeric sequence and aQR code.
 
@@ -141,7 +157,7 @@ Message QoS
 Maximum number of devices in single response. Max 1000
 
 #### synchronization-device-interval
-Controls the interval (in miliseconds) at which device synchronization process starts.
+Controls the interval (in seconds) at which device synchronization process starts.
 
 #### iot-connection-string
 This parameter value should contain IoT Hub host name, shared access key name and shared access key. It can be found in the Shared access policies tab:

@@ -8,16 +8,18 @@
 package com.orange.lo.sample.lo2iothub.azure;
 
 import com.microsoft.azure.sdk.iot.device.DeviceClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.springframework.stereotype.Component;
-
-@Component
 public class IotClientCache {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private Map<String, DeviceClient> map = new ConcurrentHashMap<>();
 
@@ -38,7 +40,7 @@ public class IotClientCache {
                 return true;
             }
         } catch (IOException e) {
-            // doesn't matter
+            LOG.error("IOException error while removing device {}: {}", deviceId, e.getMessage());
         }
         return false;
     }

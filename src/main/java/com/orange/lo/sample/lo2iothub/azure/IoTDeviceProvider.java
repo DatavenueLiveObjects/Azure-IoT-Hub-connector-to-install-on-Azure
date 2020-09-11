@@ -22,8 +22,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.springframework.beans.factory.annotation.Autowired;
-
 public class IoTDeviceProvider {
 
     private DeviceTwin deviceTwin;
@@ -31,7 +29,6 @@ public class IoTDeviceProvider {
     private String tagPlatformKey;
     private String tagPlatformValue;
 
-    @Autowired
     public IoTDeviceProvider(DeviceTwin deviceTwin, RegistryManager registryManager, String tagPlatformKey, String tagPlatformValue) {
         this.deviceTwin = deviceTwin;
         this.registryManager = registryManager;
