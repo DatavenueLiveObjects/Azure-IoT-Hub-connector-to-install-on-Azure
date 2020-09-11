@@ -67,7 +67,12 @@ public class ActionPolicy {
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("id", id).append("name", name).append("enabled", enabled).append("triggers", triggers).append("actions", actions).toString();
+        return new ToStringBuilder(this)
+                .append("id", id)
+                .append("name", name)
+                .append("enabled", enabled)
+                .append("triggers", triggers)
+                .append("actions", actions).toString();
     }
 
 }

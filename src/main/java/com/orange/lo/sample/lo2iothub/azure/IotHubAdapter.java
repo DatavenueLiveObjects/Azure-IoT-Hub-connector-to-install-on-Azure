@@ -12,6 +12,7 @@ import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.microsoft.azure.sdk.iot.device.transport.RetryDecision;
 import com.microsoft.azure.sdk.iot.service.Device;
 import com.orange.lo.sample.lo2iothub.AzureIotHubProperties;
+import com.orange.lo.sample.lo2iothub.exceptions.CommandException;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 
 import java.io.IOException;
@@ -38,7 +39,9 @@ public class IotHubAdapter {
     private AzureIotHubProperties iotHubProperties;
     private ExecutorService executorService;
 
-    public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider, LoCommandSender loCommandSender, MessageSender messageSender, IotClientCache iotClientCache, AzureIotHubProperties iotHubProperties) {
+    public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider, LoCommandSender loCommandSender,
+                         MessageSender messageSender, IotClientCache iotClientCache,
+                         AzureIotHubProperties iotHubProperties) {
         this.ioTDeviceProvider = ioTDeviceProvider;
         this.loCommandSender = loCommandSender;
         this.messageSender = messageSender;
@@ -99,30 +102,39 @@ public class IotHubAdapter {
     }
 
     private DeviceClient createDeviceClient(Device device) {
-        if (iotClientCache.get(device.getDeviceId()) == null) {
+        String deviceId = device.getDeviceId();
+        if (iotClientCache.get(deviceId) == null) {
             try {
-                String connString = String.format(CONNECTION_STRING_PATTERN, iotHubProperties.getIotHostName(), device.getDeviceId(), device.getSymmetricKey().getPrimaryKey());
+                String connString = getConnectionString(device);
                 DeviceClient deviceClient = new DeviceClient(connString, IotHubClientProtocol.MQTT);
-                deviceClient.setMessageCallback(new MessageCallbackMqtt(), device.getDeviceId());
+                deviceClient.setMessageCallback(new MessageCallbackMqtt(), deviceId);
                 deviceClient.setOperationTimeout(iotHubProperties.getDeviceClientConnectionTimeout());
                 deviceClient.setRetryPolicy((currentRetryCount, lastException) -> new RetryDecision(false, 0));
-                deviceClient.registerConnectionStatusChangeCallback(new ConnectionStatusChangeCallback(), device.getDeviceId());
+                deviceClient.registerConnectionStatusChangeCallback(new ConnectionStatusChangeCallback(), deviceId);
                 deviceClient.open();
-                iotClientCache.add(device.getDeviceId(), deviceClient);
-                LOG.info("Device client created for {}", device.getDeviceId());
+                iotClientCache.add(deviceId, deviceClient);
+                LOG.info("Device client created for {}", deviceId);
                 return deviceClient;
             } catch (URISyntaxException | IOException e) {
                 LOG.error("Error while creating device client", e);
                 return null;
             }
         }
-        return iotClientCache.get(device.getDeviceId());
+        return iotClientCache.get(deviceId);
+    }
+
+    private String getConnectionString(Device device) {
+        String iotHostName = iotHubProperties.getIotHostName();
+        String deviceId = device.getDeviceId();
+        String primaryKey = device.getSymmetricKey().getPrimaryKey();
+        return String.format(CONNECTION_STRING_PATTERN, iotHostName, deviceId, primaryKey);
     }
 
     protected class ConnectionStatusChangeCallback implements IotHubConnectionStatusChangeCallback {
 
         @Override
-        public void execute(IotHubConnectionStatus status, IotHubConnectionStatusChangeReason statusChangeReason, Throwable throwable, Object callbackContext) {
+        public void execute(IotHubConnectionStatus status, IotHubConnectionStatusChangeReason statusChangeReason,
+                            Throwable throwable, Object callbackContext) {
 
             if (IotHubConnectionStatus.DISCONNECTED == status) {
                 String deviceId = callbackContext.toString();
@@ -143,7 +155,8 @@ public class IotHubAdapter {
         public IotHubMessageResult execute(Message msg, Object context) {
             String deviceId = context.toString();
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Received command for device: {} with content {}", deviceId, new String(msg.getBytes(), Message.DEFAULT_IOTHUB_MESSAGE_CHARSET));
+                LOG.debug("Received command for device: {} with content {}", deviceId, new String(msg.getBytes(),
+                        Message.DEFAULT_IOTHUB_MESSAGE_CHARSET));
                 for (MessageProperty messageProperty : msg.getProperties()) {
                     LOG.debug("{} : {}", messageProperty.getName(), messageProperty.getValue());
                 }
@@ -151,7 +164,7 @@ public class IotHubAdapter {
             try {
                 loCommandSender.send(deviceId, new String(msg.getBytes()));
                 return IotHubMessageResult.COMPLETE;
-            } catch (Exception e) {
+            } catch (CommandException e) {
                 LOG.error("Cannot send command", e);
                 return IotHubMessageResult.REJECT;
             }

@@ -23,7 +23,8 @@ public class LoCommandSender {
     private RestTemplate restTemplate;
     private HttpHeaders authenticationHeaders;
 
-    public LoCommandSender(RestTemplate restTemplate, HttpHeaders authenticationHeaders, LiveObjectsProperties loProperties) {
+    public LoCommandSender(RestTemplate restTemplate, HttpHeaders authenticationHeaders,
+                           LiveObjectsProperties loProperties) {
         this.restTemplate = restTemplate;
         this.authenticationHeaders = authenticationHeaders;
         this.loProperties = loProperties;
@@ -33,7 +34,8 @@ public class LoCommandSender {
         String s = loProperties.getApiUrl() + "/" + COMMAND_URL_PATH;
         String url = String.format(s, deviceId);
         try {
-            ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<>(command, authenticationHeaders), Void.class);
+            HttpEntity<String> requestEntity = new HttpEntity<>(command, authenticationHeaders);
+            ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.POST, requestEntity, Void.class);
             if (!response.getStatusCode().is2xxSuccessful()) {
                 throw new CommandException("Returned status " + response.getStatusCodeValue());
             }

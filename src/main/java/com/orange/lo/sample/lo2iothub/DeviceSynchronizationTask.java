@@ -32,7 +32,8 @@ public class DeviceSynchronizationTask implements Runnable {
     private LoApiClient loApiClient;
     private AzureIotHubProperties azureIotHubProperties;
 
-    public DeviceSynchronizationTask(IotHubAdapter iotHubAdapter, MessageProducerSupport messageProducerSupport, LoApiClient loApiClient, AzureIotHubProperties azureIotHubProperties) {
+    public DeviceSynchronizationTask(IotHubAdapter iotHubAdapter, MessageProducerSupport messageProducerSupport,
+                                     LoApiClient loApiClient, AzureIotHubProperties azureIotHubProperties) {
         this.iotHubAdapter = iotHubAdapter;
         this.messageProducerSupport = messageProducerSupport;
         this.loApiClient = loApiClient;
@@ -45,15 +46,19 @@ public class DeviceSynchronizationTask implements Runnable {
         LOG.debug("Synchronizing devices for group {}", azureIotHubProperties.getLoDevicesGroup());
         try {
 
-            Set<String> loIds = loApiClient.getDevices(azureIotHubProperties.getLoDevicesGroup()).stream().map(LoDevice::getId).collect(Collectors.toSet());
+            Set<String> loIds = loApiClient.getDevices(azureIotHubProperties.getLoDevicesGroup()).stream()
+                    .map(LoDevice::getId)
+                    .collect(Collectors.toSet());
             if (!loIds.isEmpty()) {
-                ThreadPoolExecutor synchronizingExecutor = new ThreadPoolExecutor(azureIotHubProperties.getSynchronizationThreadPoolSize(), azureIotHubProperties.getSynchronizationThreadPoolSize(), 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(loIds.size()));
+                int poolSize = azureIotHubProperties.getSynchronizationThreadPoolSize();
+                ThreadPoolExecutor synchronizingExecutor = new ThreadPoolExecutor(poolSize, poolSize, 10,
+                        TimeUnit.SECONDS, new ArrayBlockingQueue<>(loIds.size()));
                 for (String deviceId : loIds) {
                     synchronizingExecutor.execute(() ->
                             iotHubAdapter.createDeviceClient(deviceId)
                     );
                 }
-                int synchronizationTimeout = calculateSynchronizationTimeout(loIds.size(), azureIotHubProperties.getSynchronizationThreadPoolSize());
+                int synchronizationTimeout = calculateSynchronizationTimeout(loIds.size(), poolSize);
                 synchronizingExecutor.shutdown();
                 synchronizingExecutor.awaitTermination(synchronizationTimeout, TimeUnit.SECONDS);
             }

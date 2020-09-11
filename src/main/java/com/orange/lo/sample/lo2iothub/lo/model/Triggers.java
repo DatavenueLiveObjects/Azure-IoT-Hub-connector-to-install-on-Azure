@@ -37,7 +37,9 @@ public class Triggers {
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("deviceCreated", deviceCreated).append("deviceDeleted", deviceDeleted).toString();
+        return new ToStringBuilder(this)
+                .append("deviceCreated", deviceCreated)
+                .append("deviceDeleted", deviceDeleted).toString();
     }
 
     public void setDeviceCreated(DeviceCreated deviceCreated) {

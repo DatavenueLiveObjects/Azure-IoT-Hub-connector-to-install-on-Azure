@@ -32,11 +32,13 @@ public class MessageSender {
 
     public void sendMessage(Message<String> msg, DeviceClient deviceClient) {
         counterProvider.evtAttempt().increment();
-        com.microsoft.azure.sdk.iot.device.Message message = new com.microsoft.azure.sdk.iot.device.Message(msg.getPayload());
+        com.microsoft.azure.sdk.iot.device.Message message =
+                new com.microsoft.azure.sdk.iot.device.Message(msg.getPayload());
         deviceClient.sendEventAsync(message, new EventCallback(), message);
     }
 
     protected class EventCallback implements IotHubEventCallback {
+        @Override
         public void execute(IotHubStatusCode status, Object context) {
 
             switch (status) {
