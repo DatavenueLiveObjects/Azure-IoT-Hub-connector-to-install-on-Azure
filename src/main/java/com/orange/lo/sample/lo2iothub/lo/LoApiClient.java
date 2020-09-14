@@ -33,7 +33,7 @@ public class LoApiClient {
     private static final String X_RATELIMIT_RESET_HEADER = "X-Ratelimit-Reset";
 
     private static final String DEVICES_ENDPOINT = "/v1/deviceMgt/devices";
-    private static final String GROOUPS_ENDPOINT = "/v1/deviceMgt/groups";
+    private static final String GROUPS_ENDPOINT = "/v1/deviceMgt/groups";
 
     private final String devicesPagedUrlTemplate;
     private final String groupsPagedUrlTemplate;
@@ -63,7 +63,7 @@ public class LoApiClient {
     private String getGroupsPagedUrlTemplate(LiveObjectsProperties loProperties) {
         String apiUrl = loProperties.getApiUrl();
         int pageSize = loProperties.getPageSize();
-        return apiUrl + GROOUPS_ENDPOINT + "?limit=" + pageSize + "&offset=" + "%d";
+        return apiUrl + GROUPS_ENDPOINT + "?limit=" + pageSize + "&offset=" + "%d";
     }
 
     private void initialize() {
@@ -124,8 +124,8 @@ public class LoApiClient {
             if (loDevices.isEmpty() || devices.size() >= getTotalCount(response)) {
                 break;
             }
-            if (Integer.parseInt(response.getHeaders().get(X_RATELIMIT_REMAINING_HEADER).get(0)) == 0) {
-                long reset = Long.parseLong(response.getHeaders().get(X_RATELIMIT_RESET_HEADER).get(0));
+            if (Integer.parseInt(getHeaderValue(response, X_RATELIMIT_REMAINING_HEADER)) == 0) {
+                long reset = Long.parseLong(getHeaderValue(response, X_RATELIMIT_RESET_HEADER));
                 long current = System.currentTimeMillis();
                 try {
                     Thread.sleep(reset - current);
@@ -147,7 +147,12 @@ public class LoApiClient {
         return String.format(groupsPagedUrlTemplate, offset * loProperties.getPageSize());
     }
 
-    private int getTotalCount(ResponseEntity<?> response) {
-        return Integer.parseInt(response.getHeaders().get(X_TOTAL_COUNT_HEADER).get(0));
+    private static int getTotalCount(ResponseEntity<?> response) {
+        String headerValue = getHeaderValue(response, X_TOTAL_COUNT_HEADER);
+        return Integer.parseInt(headerValue);
+    }
+
+    private static String getHeaderValue(ResponseEntity<?> response, String xTotalCountHeader) {
+        return response.getHeaders().get(xTotalCountHeader).get(0);
     }
 }

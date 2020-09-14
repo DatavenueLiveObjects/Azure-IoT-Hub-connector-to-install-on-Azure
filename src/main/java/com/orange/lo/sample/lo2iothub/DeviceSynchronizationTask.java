@@ -76,7 +76,7 @@ public class DeviceSynchronizationTask implements Runnable {
         messageProducerSupport.start();
     }
 
-    private int calculateSynchronizationTimeout(int devices, int threadPoolSize) {
+    private static int calculateSynchronizationTimeout(int devices, int threadPoolSize) {
         return (devices / threadPoolSize + 1) * 5; // max 5 seconds for 1 operation
     }
 

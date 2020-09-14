@@ -54,7 +54,7 @@ public class ApplicationConfig {
 
     private static final String DEVICE_ID_FIELD = "deviceId";
     private static final String TYPE_FIELD = "type";
-    private static final String UNKNOW_MESSAGE_TYPE = "unknow";
+    private static final String UNKNOWN_MESSAGE_TYPE = "unknown";
     private static final String DEVICE_DELETED_MESSAGE_TYPE = "deviceDeleted";
     private static final String DEVICE_CREATED_MESSAGE_TYPE = "deviceCreated";
     private static final String DATA_MESSAGE_TYPE = "dataMessage";
@@ -149,22 +149,18 @@ public class ApplicationConfig {
 
     private IntegrationFlow mqttInFlow(IotHubAdapter iotHubAdapter, MessageProducerSupport messageProducerSupport) {
         return IntegrationFlows.from(messageProducerSupport).<String, String>route(
-                this::getMessageType, mapping -> mapping.resolutionRequired(false)
+                ApplicationConfig::getMessageType, mapping -> mapping.resolutionRequired(false)
                         .subFlowMapping(DATA_MESSAGE_TYPE, subFlow -> subFlow.handle(msg -> {
                             counterProvider.evtReceived().increment();
                             iotHubAdapter.sendMessage((Message<String>) msg);
                         })).subFlowMapping(DEVICE_CREATED_MESSAGE_TYPE, subFlow -> subFlow.handle(msg -> {
                             Optional<String> deviceId = getDeviceId((Message<String>) msg);
-                            if (deviceId.isPresent()) {
-                                iotHubAdapter.createDeviceClient(deviceId.get());
-                            }
+                            deviceId.ifPresent(iotHubAdapter::createDeviceClient);
                         })).subFlowMapping(DEVICE_DELETED_MESSAGE_TYPE, subFlow -> subFlow.handle(msg -> {
                             Optional<String> deviceId = getDeviceId((Message<String>) msg);
-                            if (deviceId.isPresent()) {
-                                iotHubAdapter.deleteDevice(deviceId.get());
-                            }
+                            deviceId.ifPresent(iotHubAdapter::deleteDevice);
                         })).defaultSubFlowMapping(subFlow -> subFlow.handle(
-                                msg -> LOG.error("Unknow message type of message: {}", msg)
+                                msg -> LOG.error("Unknown message type of message: {}", msg)
                         )))
                 .get();
     }
@@ -187,7 +183,7 @@ public class ApplicationConfig {
         return adapter;
     }
 
-    private Optional<String> getDeviceId(Message<String> msg) {
+    private static Optional<String> getDeviceId(Message<String> msg) {
         String id = null;
         try {
             id = new JSONObject(msg.getPayload()).getString(DEVICE_ID_FIELD);
@@ -197,12 +193,12 @@ public class ApplicationConfig {
         return Optional.ofNullable(id);
     }
 
-    private String getMessageType(String msg) {
+    private static String getMessageType(String msg) {
         try {
             return new JSONObject(msg).getString(TYPE_FIELD);
         } catch (JSONException e) {
             LOG.error("No message type in payload");
-            return UNKNOW_MESSAGE_TYPE;
+            return UNKNOWN_MESSAGE_TYPE;
         }
     }
 }

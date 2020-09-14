@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class LoGroup {
 
-    private String id;
+    private final String id;
     private String pathNode;
     
     @JsonCreator

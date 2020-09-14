@@ -9,7 +9,7 @@ package com.orange.lo.sample.lo2iothub.azure;
 
 public class IoTDevice {
 
-    private String id;
+    private final String id;
 
     public IoTDevice(String id) {
         this.id = id;

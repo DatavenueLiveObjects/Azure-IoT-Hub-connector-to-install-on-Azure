@@ -71,7 +71,7 @@ public class IotHubAdapter {
         }
     }
 
-    private String getSourceDeviceId(String msg) throws JSONException {
+    private static String getSourceDeviceId(String msg) throws JSONException {
         return new JSONObject(msg).getJSONObject("metadata").getString("source");
     }
 

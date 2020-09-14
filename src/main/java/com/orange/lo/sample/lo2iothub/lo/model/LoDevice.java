@@ -14,7 +14,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class LoDevice {
 
-    private String id;
+    private final String id;
     private String name;
 
     @JsonCreator
