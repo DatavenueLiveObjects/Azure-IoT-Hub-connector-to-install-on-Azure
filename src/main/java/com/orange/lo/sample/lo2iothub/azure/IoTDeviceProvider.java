@@ -15,9 +15,11 @@ import com.microsoft.azure.sdk.iot.service.devicetwin.DeviceTwinDevice;
 import com.microsoft.azure.sdk.iot.service.devicetwin.Pair;
 import com.microsoft.azure.sdk.iot.service.devicetwin.Query;
 import com.microsoft.azure.sdk.iot.service.devicetwin.SqlQuery;
+import com.microsoft.azure.sdk.iot.service.exceptions.IotHubException;
 import com.microsoft.azure.sdk.iot.service.exceptions.IotHubNotFoundException;
 import com.orange.lo.sample.lo2iothub.exceptions.IotDeviceProviderException;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -29,7 +31,8 @@ public class IoTDeviceProvider {
     private String tagPlatformKey;
     private String tagPlatformValue;
 
-    public IoTDeviceProvider(DeviceTwin deviceTwin, RegistryManager registryManager, String tagPlatformKey, String tagPlatformValue) {
+    public IoTDeviceProvider(DeviceTwin deviceTwin, RegistryManager registryManager, String tagPlatformKey,
+                             String tagPlatformValue) {
         this.deviceTwin = deviceTwin;
         this.registryManager = registryManager;
         this.tagPlatformKey = tagPlatformKey;
@@ -41,7 +44,7 @@ public class IoTDeviceProvider {
             return registryManager.getDevice(deviceId);
         } catch (IotHubNotFoundException e) {
             return null;
-        } catch (Exception e) {
+        } catch (IotHubException | IOException e) {
             throw new IotDeviceProviderException("Error while retrieving device ", e);
         }
     }
@@ -57,7 +60,7 @@ public class IoTDeviceProvider {
                 list.add(new IoTDevice(deviceTwinDevice.getDeviceId()));
             }
             return list;
-        } catch (Exception e) {
+        } catch (IotHubException | IOException e) {
             throw new IotDeviceProviderException("Error while retrieving devices", e);
         }
     }
@@ -65,7 +68,7 @@ public class IoTDeviceProvider {
     public void deleteDevice(String deviceId) {
         try {
             registryManager.removeDevice(deviceId);
-        } catch (Exception e) {
+        } catch (IotHubException | IOException e) {
             throw new IotDeviceProviderException("Error while removing device", e);
         }
     }
@@ -76,7 +79,7 @@ public class IoTDeviceProvider {
             registryManager.addDevice(device);
             setPlatformTag(deviceId);
             return device;
-        } catch (Exception e) {
+        } catch (IotHubException | IOException e) {
             throw new IotDeviceProviderException("Error while creating device", e);
         }
     }
@@ -88,7 +91,7 @@ public class IoTDeviceProvider {
             DeviceTwinDevice deviceTwinDevice = new DeviceTwinDevice(deviceId);
             deviceTwinDevice.setTags(tags);
             deviceTwin.updateTwin(deviceTwinDevice);
-        } catch (Exception e) {
+        } catch (IotHubException | IOException e) {
             throw new IotDeviceProviderException("Error while creating device", e);
         }
     }

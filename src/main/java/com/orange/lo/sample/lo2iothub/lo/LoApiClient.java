@@ -33,7 +33,7 @@ public class LoApiClient {
     private static final String X_RATELIMIT_RESET_HEADER = "X-Ratelimit-Reset";
 
     private static final String DEVICES_ENDPOINT = "/v1/deviceMgt/devices";
-    private static final String GROOUPS_ENDPOINT = "/v1/deviceMgt/groups";
+    private static final String GROUPS_ENDPOINT = "/v1/deviceMgt/groups";
 
     private final String devicesPagedUrlTemplate;
     private final String groupsPagedUrlTemplate;
@@ -44,13 +44,26 @@ public class LoApiClient {
 
     private Map<String, String> groupsMap = new HashMap<>();
 
-    public LoApiClient(RestTemplate restTemplate, LiveObjectsProperties loProperties, HttpHeaders authenticationHeaders) {
+    public LoApiClient(RestTemplate restTemplate, LiveObjectsProperties loProperties,
+                       HttpHeaders authenticationHeaders) {
         this.restTemplate = restTemplate;
         this.loProperties = loProperties;
         this.authenticationHeaders = authenticationHeaders;
-        this.devicesPagedUrlTemplate = loProperties.getApiUrl() + DEVICES_ENDPOINT + "?limit=" + loProperties.getPageSize() + "&offset=%d&groupId=%s&fields=id,name,group";
-        this.groupsPagedUrlTemplate = loProperties.getApiUrl() + GROOUPS_ENDPOINT + "?limit=" + loProperties.getPageSize() + "&offset=" + "%d";
+        this.devicesPagedUrlTemplate = getDevicesPagedUrlTemplate(loProperties);
+        this.groupsPagedUrlTemplate = getGroupsPagedUrlTemplate(loProperties);
         initialize();
+    }
+
+    private String getDevicesPagedUrlTemplate(LiveObjectsProperties loProperties) {
+        String apiUrl = loProperties.getApiUrl();
+        int pageSize = loProperties.getPageSize();
+        return apiUrl + DEVICES_ENDPOINT + "?limit=" + pageSize + "&offset=%d&groupId=%s&fields=id,name,group";
+    }
+
+    private String getGroupsPagedUrlTemplate(LiveObjectsProperties loProperties) {
+        String apiUrl = loProperties.getApiUrl();
+        int pageSize = loProperties.getPageSize();
+        return apiUrl + GROUPS_ENDPOINT + "?limit=" + pageSize + "&offset=" + "%d";
     }
 
     private void initialize() {
@@ -66,20 +79,23 @@ public class LoApiClient {
 
     private void getExistingGroups() {
         HttpEntity<Void> httpEntity = new HttpEntity<>(authenticationHeaders);
+        ArrayList<LoGroup> emptyList = new ArrayList<>();
 
         LOG.debug("Trying to get existing groups");
         int retrievedGroups = 0;
         for (int offset = 0; ; offset++) {
             try {
-                ResponseEntity<LoGroup[]> response = restTemplate.exchange(getPagedGroupsUrl(offset), HttpMethod.GET, httpEntity, LoGroup[].class);
+                String pagedGroupsUrl = getPagedGroupsUrl(offset);
+                ResponseEntity<LoGroup[]> response =
+                        restTemplate.exchange(pagedGroupsUrl, HttpMethod.GET, httpEntity, LoGroup[].class);
                 List<LoGroup> loGroups = Optional.ofNullable(response.getBody())
                         .map(Arrays::asList)
-                        .orElse(new ArrayList<>());
+                        .orElse(emptyList);
 
                 retrievedGroups += loGroups.size();
                 loGroups.forEach(g -> groupsMap.put(g.getPathNode(), g.getId()));
 
-                if (loGroups.isEmpty() || retrievedGroups >= Integer.parseInt(response.getHeaders().get(X_TOTAL_COUNT_HEADER).get(0))) {
+                if (loGroups.isEmpty() || retrievedGroups >= getTotalCount(response)) {
                     break;
                 }
             } catch (HttpClientErrorException e) {
@@ -92,25 +108,29 @@ public class LoApiClient {
     public List<LoDevice> getDevices(String groupName) {
         List<LoDevice> devices = new ArrayList<>(loProperties.getPageSize());
         HttpEntity<Object> requestEntity = new HttpEntity<>(authenticationHeaders);
+        ArrayList<LoDevice> emptyList = new ArrayList<>();
+
         for (int offset = 0; ; offset++) {
-            LOG.trace("Calling LO url {}", getPagedDevicesUrl(offset, groupName));
-            ResponseEntity<LoDevice[]> response = restTemplate.exchange(getPagedDevicesUrl(offset, groupName), HttpMethod.GET, requestEntity, LoDevice[].class);
+            String pagedDevicesUrl = getPagedDevicesUrl(offset, groupName);
+            LOG.trace("Calling LO url {}", pagedDevicesUrl);
+            ResponseEntity<LoDevice[]> response =
+                    restTemplate.exchange(pagedDevicesUrl, HttpMethod.GET, requestEntity, LoDevice[].class);
             List<LoDevice> loDevices = Optional.ofNullable(response.getBody())
                     .map(Arrays::asList)
-                    .orElse(new ArrayList<>());
+                    .orElse(emptyList);
 
             LOG.trace("Got {} devices", loDevices.size());
             devices.addAll(loDevices);
-            if (loDevices.isEmpty() || devices.size() >= Integer.parseInt(response.getHeaders().get(X_TOTAL_COUNT_HEADER).get(0))) {
+            if (loDevices.isEmpty() || devices.size() >= getTotalCount(response)) {
                 break;
             }
-            if (Integer.parseInt(response.getHeaders().get(X_RATELIMIT_REMAINING_HEADER).get(0)) == 0) {
-                long reset = Long.parseLong(response.getHeaders().get(X_RATELIMIT_RESET_HEADER).get(0));
+            if (Integer.parseInt(getHeaderValue(response, X_RATELIMIT_REMAINING_HEADER)) == 0) {
+                long reset = Long.parseLong(getHeaderValue(response, X_RATELIMIT_RESET_HEADER));
                 long current = System.currentTimeMillis();
                 try {
                     Thread.sleep(reset - current);
-                } catch (InterruptedException e) {
-                    LOG.error("InterruptedException error while getting devices: {}", e.getMessage());
+                } catch (Exception e) {
+                    LOG.error("Exception while getting devices: {}", e.getMessage());
                 }
             }
         }
@@ -119,10 +139,20 @@ public class LoApiClient {
     }
 
     private String getPagedDevicesUrl(int offset, String groupName) {
-        return String.format(devicesPagedUrlTemplate, offset * loProperties.getPageSize(), groupsMap.getOrDefault(groupName, DEFAULT_GROUP_ID));
+        String groupsMapOrDefault = groupsMap.getOrDefault(groupName, DEFAULT_GROUP_ID);
+        return String.format(devicesPagedUrlTemplate, offset * loProperties.getPageSize(), groupsMapOrDefault);
     }
 
     private String getPagedGroupsUrl(int offset) {
         return String.format(groupsPagedUrlTemplate, offset * loProperties.getPageSize());
+    }
+
+    private static int getTotalCount(ResponseEntity<?> response) {
+        String headerValue = getHeaderValue(response, X_TOTAL_COUNT_HEADER);
+        return Integer.parseInt(headerValue);
+    }
+
+    private static String getHeaderValue(ResponseEntity<?> response, String xTotalCountHeader) {
+        return response.getHeaders().get(xTotalCountHeader).get(0);
     }
 }

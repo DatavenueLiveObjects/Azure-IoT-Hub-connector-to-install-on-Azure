@@ -54,7 +54,7 @@ public class ApplicationConfig {
 
     private static final String DEVICE_ID_FIELD = "deviceId";
     private static final String TYPE_FIELD = "type";
-    private static final String UNKNOW_MESSAGE_TYPE = "unknow";
+    private static final String UNKNOWN_MESSAGE_TYPE = "unknown";
     private static final String DEVICE_DELETED_MESSAGE_TYPE = "deviceDeleted";
     private static final String DEVICE_CREATED_MESSAGE_TYPE = "deviceCreated";
     private static final String DATA_MESSAGE_TYPE = "dataMessage";
@@ -67,7 +67,8 @@ public class ApplicationConfig {
     private MessageSender messageSender;
 
     @Autowired
-    public ApplicationConfig(Counters counterProvider, IntegrationFlowContext integrationflowContext, MessageSender messageSender, ApplicationProperties applicationProperties) {
+    public ApplicationConfig(Counters counterProvider, IntegrationFlowContext integrationflowContext,
+                             MessageSender messageSender, ApplicationProperties applicationProperties) {
         this.counterProvider = counterProvider;
         this.integrationFlowContext = integrationflowContext;
         this.messageSender = messageSender;
@@ -81,30 +82,41 @@ public class ApplicationConfig {
     }
 
     @Bean
-    public void test() {
+    public void init() {
         TaskScheduler taskScheduler = taskScheduler();
 
         applicationProperties.getTenantList().forEach(tenantProperties -> {
             LiveObjectsProperties liveObjectsProperties = tenantProperties.getLiveObjectsProperties();
             List<AzureIotHubProperties> azureIotHubList = tenantProperties.getAzureIotHubList();
 
-            LoApiClient loApiClient = new LoApiClient(new RestTemplate(), liveObjectsProperties, getAuthenticationHeaders(liveObjectsProperties.getApiKey()));
+            HttpHeaders authenticationHeaders = getAuthenticationHeaders(liveObjectsProperties.getApiKey());
+            LoApiClient loApiClient = new LoApiClient(new RestTemplate(), liveObjectsProperties, authenticationHeaders);
 
             azureIotHubList.forEach(azureIotHubProperties -> {
                 try {
-                    DeviceTwin deviceTwin = DeviceTwin.createFromConnectionString(azureIotHubProperties.getIotConnectionString());
-                    RegistryManager registryManager = RegistryManager.createFromConnectionString(azureIotHubProperties.getIotConnectionString());
-                    IoTDeviceProvider ioTDeviceProvider = new IoTDeviceProvider(deviceTwin, registryManager, azureIotHubProperties.getTagPlatformKey(), azureIotHubProperties.getTagPlatformValue());
+                    String iotConnectionString = azureIotHubProperties.getIotConnectionString();
+                    DeviceTwin deviceTwin = DeviceTwin.createFromConnectionString(iotConnectionString);
+                    RegistryManager registryManager = RegistryManager.createFromConnectionString(iotConnectionString);
+                    String tagPlatformKey = azureIotHubProperties.getTagPlatformKey();
+                    String tagPlatformValue = azureIotHubProperties.getTagPlatformValue();
+                    IoTDeviceProvider ioTDeviceProvider =
+                            new IoTDeviceProvider(deviceTwin, registryManager, tagPlatformKey, tagPlatformValue);
                     IotClientCache iotClientCache = new IotClientCache();
-                    LoCommandSender loCommandSender2 = new LoCommandSender(new RestTemplate(), getAuthenticationHeaders(liveObjectsProperties.getApiKey()), liveObjectsProperties);
-                    IotHubAdapter iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, loCommandSender2, messageSender, iotClientCache, azureIotHubProperties);
+                    LoCommandSender loCommandSender2 =
+                            new LoCommandSender(new RestTemplate(), authenticationHeaders, liveObjectsProperties);
+                    IotHubAdapter iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, loCommandSender2, messageSender,
+                            iotClientCache, azureIotHubProperties);
 
                     MessageProducerSupport mqttInbound = mqttInbound(azureIotHubProperties, liveObjectsProperties);
                     IntegrationFlow mqttInFlow = mqttInFlow(iotHubAdapter, mqttInbound);
-                    integrationFlowContext.registration(mqttInFlow).id(azureIotHubProperties.getLoDevicesGroup()).register();
+                    String loDevicesGroup = azureIotHubProperties.getLoDevicesGroup();
+                    integrationFlowContext.registration(mqttInFlow).id(loDevicesGroup).register();
 
-                    DeviceSynchronizationTask deviceSynchronizationTask = new DeviceSynchronizationTask(iotHubAdapter, mqttInbound, loApiClient, azureIotHubProperties);
-                    taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, Duration.ofSeconds(liveObjectsProperties.getSynchronizationDeviceInterval()));
+                    DeviceSynchronizationTask deviceSynchronizationTask = new DeviceSynchronizationTask(iotHubAdapter,
+                            mqttInbound, loApiClient, azureIotHubProperties);
+                    int synchronizationDeviceInterval = liveObjectsProperties.getSynchronizationDeviceInterval();
+                    Duration period = Duration.ofSeconds(synchronizationDeviceInterval);
+                    taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, period);
 
                 } catch (IOException e) {
                     throw new InitializationException(e);
@@ -126,7 +138,7 @@ public class ApplicationConfig {
         LOG.info("Connecting to mqtt server: {}", loProperties.getUri());
         DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
         MqttConnectOptions opts = new MqttConnectOptions();
-        opts.setServerURIs(new String[] { loProperties.getUri() });
+        opts.setServerURIs(new String[]{loProperties.getUri()});
         opts.setUserName(loProperties.getUsername());
         opts.setPassword(loProperties.getApiKey().toCharArray());
         opts.setKeepAliveInterval(loProperties.getKeepAliveIntervalSeconds());
@@ -136,25 +148,32 @@ public class ApplicationConfig {
     }
 
     private IntegrationFlow mqttInFlow(IotHubAdapter iotHubAdapter, MessageProducerSupport messageProducerSupport) {
-        return IntegrationFlows.from(messageProducerSupport).<String, String>route(this::getMesageType, mapping -> mapping.resolutionRequired(false).subFlowMapping(DATA_MESSAGE_TYPE, subflow -> subflow.handle(msg -> {
-            counterProvider.evtReceived().increment();
-            iotHubAdapter.sendMessage((Message<String>) msg);
-        })).subFlowMapping(DEVICE_CREATED_MESSAGE_TYPE, subflow -> subflow.handle(msg -> {
-            Optional<String> deviceId = getDeviceId((Message<String>) msg);
-            if (deviceId.isPresent()) {
-                iotHubAdapter.createDeviceClient(deviceId.get());
-            }
-        })).subFlowMapping(DEVICE_DELETED_MESSAGE_TYPE, subflow -> subflow.handle(msg -> {
-            Optional<String> deviceId = getDeviceId((Message<String>) msg);
-            if (deviceId.isPresent()) {
-                iotHubAdapter.deleteDevice(deviceId.get());
-            }
-        })).defaultSubFlowMapping(subflow -> subflow.handle(msg -> LOG.error("Unknow message type of message: {}", msg)))).get();
+        return IntegrationFlows.from(messageProducerSupport).<String, String>route(
+                ApplicationConfig::getMessageType, mapping -> mapping.resolutionRequired(false)
+                        .subFlowMapping(DATA_MESSAGE_TYPE, subFlow -> subFlow.handle(msg -> {
+                            counterProvider.evtReceived().increment();
+                            iotHubAdapter.sendMessage((Message<String>) msg);
+                        })).subFlowMapping(DEVICE_CREATED_MESSAGE_TYPE, subFlow -> subFlow.handle(msg -> {
+                            Optional<String> deviceId = getDeviceId((Message<String>) msg);
+                            deviceId.ifPresent(iotHubAdapter::createDeviceClient);
+                        })).subFlowMapping(DEVICE_DELETED_MESSAGE_TYPE, subFlow -> subFlow.handle(msg -> {
+                            Optional<String> deviceId = getDeviceId((Message<String>) msg);
+                            deviceId.ifPresent(iotHubAdapter::deleteDevice);
+                        })).defaultSubFlowMapping(subFlow -> subFlow.handle(
+                                msg -> LOG.error("Unknown message type of message: {}", msg)
+                        )))
+                .get();
     }
 
-    private MessageProducerSupport mqttInbound(AzureIotHubProperties hubProperties, LiveObjectsProperties loProperties) {
-        LOG.info("Connecting to mqtt topics: {},{}", hubProperties.getLoMessagesTopic(), hubProperties.getLoDevicesTopic());
-        MqttPahoMessageDrivenChannelAdapter adapter = new MqttPahoMessageDrivenChannelAdapter(loProperties.getClientId() + UUID.randomUUID(), mqttClientFactory(loProperties), "fifo/" + hubProperties.getLoMessagesTopic(), "fifo/" + hubProperties.getLoDevicesTopic());
+    private MessageProducerSupport mqttInbound(AzureIotHubProperties hubProperties,
+                                               LiveObjectsProperties loProperties) {
+        String loMessagesTopic = hubProperties.getLoMessagesTopic();
+        String loDevicesTopic = hubProperties.getLoDevicesTopic();
+        LOG.info("Connecting to mqtt topics: {},{}", loMessagesTopic, loDevicesTopic);
+        String clientId = loProperties.getClientId() + UUID.randomUUID();
+        MqttPahoClientFactory clientFactory = mqttClientFactory(loProperties);
+        MqttPahoMessageDrivenChannelAdapter adapter = new MqttPahoMessageDrivenChannelAdapter(clientId, clientFactory,
+                "fifo/" + loMessagesTopic, "fifo/" + loDevicesTopic);
 
         adapter.setAutoStartup(false);
         adapter.setRecoveryInterval(loProperties.getRecoveryInterval());
@@ -164,7 +183,7 @@ public class ApplicationConfig {
         return adapter;
     }
 
-    private Optional<String> getDeviceId(Message<String> msg) {
+    private static Optional<String> getDeviceId(Message<String> msg) {
         String id = null;
         try {
             id = new JSONObject(msg.getPayload()).getString(DEVICE_ID_FIELD);
@@ -174,12 +193,12 @@ public class ApplicationConfig {
         return Optional.ofNullable(id);
     }
 
-    private String getMesageType(String msg) {
+    private static String getMessageType(String msg) {
         try {
             return new JSONObject(msg).getString(TYPE_FIELD);
         } catch (JSONException e) {
             LOG.error("No message type in payload");
-            return UNKNOW_MESSAGE_TYPE;
+            return UNKNOWN_MESSAGE_TYPE;
         }
     }
 }
