@@ -28,7 +28,6 @@ import com.orange.lo.sample.lo2iothub.utils.Counters;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.configurationprocessor.json.JSONException;
 import org.springframework.boot.configurationprocessor.json.JSONObject;
 import org.springframework.context.annotation.Bean;
@@ -66,7 +65,6 @@ public class ApplicationConfig {
     private ApplicationProperties applicationProperties;
     private MessageSender messageSender;
 
-    @Autowired
     public ApplicationConfig(Counters counterProvider, IntegrationFlowContext integrationflowContext,
                              MessageSender messageSender, ApplicationProperties applicationProperties) {
         this.counterProvider = counterProvider;
@@ -134,7 +132,7 @@ public class ApplicationConfig {
         return headers;
     }
 
-    public MqttPahoClientFactory mqttClientFactory(LiveObjectsProperties loProperties) {
+    private MqttPahoClientFactory mqttClientFactory(LiveObjectsProperties loProperties) {
         LOG.info("Connecting to mqtt server: {}", loProperties.getUri());
         DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
         MqttConnectOptions opts = new MqttConnectOptions();
