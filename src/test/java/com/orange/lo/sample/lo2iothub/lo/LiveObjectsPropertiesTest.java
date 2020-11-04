@@ -1,5 +1,6 @@
-package com.orange.lo.sample.lo2iothub;
+package com.orange.lo.sample.lo2iothub.lo;
 
+import com.orange.lo.sample.lo2iothub.lo.LiveObjectsProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

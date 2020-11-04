@@ -1,5 +1,6 @@
-package com.orange.lo.sample.lo2iothub;
+package com.orange.lo.sample.lo2iothub.azure;
 
+import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

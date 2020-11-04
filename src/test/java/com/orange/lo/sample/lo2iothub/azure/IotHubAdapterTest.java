@@ -3,7 +3,6 @@ package com.orange.lo.sample.lo2iothub.azure;
 import com.microsoft.azure.sdk.iot.device.DeviceClient;
 import com.microsoft.azure.sdk.iot.device.IotHubClientProtocol;
 import com.microsoft.azure.sdk.iot.service.Device;
-import com.orange.lo.sample.lo2iothub.AzureIotHubProperties;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

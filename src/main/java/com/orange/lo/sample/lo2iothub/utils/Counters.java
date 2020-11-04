@@ -9,8 +9,6 @@ package com.orange.lo.sample.lo2iothub.utils;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -21,7 +19,6 @@ public class Counters {
     private Counter evtSent;
     private Counter evtFailed;
 
-    @Autowired
     public Counters(MeterRegistry registry) {
         evtReceived = registry.counter("evt-received");
         evtAttempt = registry.counter("evt-attempt");

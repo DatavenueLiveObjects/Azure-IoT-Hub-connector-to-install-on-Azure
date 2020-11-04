@@ -7,6 +7,9 @@
 
 package com.orange.lo.sample.lo2iothub;
 
+import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
+import com.orange.lo.sample.lo2iothub.lo.LiveObjectsProperties;
+
 import java.util.List;
 
 public class TenantProperties {

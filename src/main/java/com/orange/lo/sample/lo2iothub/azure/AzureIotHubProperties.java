@@ -5,7 +5,7 @@
 * LICENSE file in the root directory of this source tree. 
 */
 
-package com.orange.lo.sample.lo2iothub;
+package com.orange.lo.sample.lo2iothub.azure;
 
 public class AzureIotHubProperties {
 

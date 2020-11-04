@@ -9,11 +9,13 @@ package com.orange.lo.sample.lo2iothub;
 
 import com.microsoft.azure.sdk.iot.service.RegistryManager;
 import com.microsoft.azure.sdk.iot.service.devicetwin.DeviceTwin;
+import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
 import com.orange.lo.sample.lo2iothub.azure.IoTDeviceProvider;
 import com.orange.lo.sample.lo2iothub.azure.IotClientCache;
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.azure.MessageSender;
 import com.orange.lo.sample.lo2iothub.exceptions.InitializationException;
+import com.orange.lo.sample.lo2iothub.lo.LiveObjectsProperties;
 import com.orange.lo.sample.lo2iothub.lo.LoApiClient;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 
