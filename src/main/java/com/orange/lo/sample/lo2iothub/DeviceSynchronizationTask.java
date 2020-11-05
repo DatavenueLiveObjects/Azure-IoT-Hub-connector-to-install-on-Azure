@@ -7,6 +7,7 @@
 
 package com.orange.lo.sample.lo2iothub;
 
+import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
 import com.orange.lo.sample.lo2iothub.azure.IoTDevice;
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoApiClient;

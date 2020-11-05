@@ -7,7 +7,6 @@
 
 package com.orange.lo.sample.lo2iothub.lo;
 
-import com.orange.lo.sample.lo2iothub.LiveObjectsProperties;
 import com.orange.lo.sample.lo2iothub.exceptions.CommandException;
 
 import org.springframework.http.HttpEntity;

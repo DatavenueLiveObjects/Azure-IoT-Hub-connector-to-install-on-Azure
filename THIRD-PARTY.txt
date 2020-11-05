@@ -1,9 +1,14 @@
-COMPONENT                               | VERSION       | LICENCE        | URL
+COMPONENT                               | VERSION       | LICENCE                    | URL
 ----------------------------------------------------------------------------------------------------------------------------------------------
-Spring Boot                             | 2.1.8.RELEASE | Apache License | Version 2.0, https://www.apache.org/licenses/LICENSE-2.0
-Iot Hub Java Service SDK                | 1.18.0        | MIT License    | http://opensource.org/licenses/MIT
-IoT Hub Java Device Client              | 1.18.0        | MIT License    | http://opensource.org/licenses/MIT
-Guava                                   | 28.1-jre      | Apache License | Version 2.0, http://www.apache.org/licenses/LICENSE-2.0.txt
-azure-eventhubs                         | 2.3.2         | MIT license    | http://www.opensource.org/licenses/mit-license.php
-applicationinsights-spring-boot-starter | 2.5.1         | MIT License    | http://www.opensource.org/licenses/mit-license.php
-azure-spring-boot-metrics-starter       | 2.2.1         | MIT            | https://github.com/Microsoft/azure-spring-boot/blob/master/LICENSE
+Spring Boot                             | 2.1.8.RELEASE | Apache License             | Version 2.0, https://www.apache.org/licenses/LICENSE-2.0
+Iot Hub Java Service SDK                | 1.18.0        | MIT License                | http://opensource.org/licenses/MIT
+IoT Hub Java Device Client              | 1.18.0        | MIT License                | http://opensource.org/licenses/MIT
+Guava                                   | 28.1-jre      | Apache License             | Version 2.0, http://www.apache.org/licenses/LICENSE-2.0.txt
+azure-eventhubs                         | 2.3.2         | MIT license                | http://www.opensource.org/licenses/mit-license.php
+applicationinsights-spring-boot-starter | 2.5.1         | MIT License                | http://www.opensource.org/licenses/mit-license.php
+azure-spring-boot-metrics-starter       | 2.2.1         | MIT                        | https://github.com/Microsoft/azure-spring-boot/blob/master/LICENSE
+Mockito Core                            | 3.1.0         | MIT License                | https://github.com/mockito/mockito/blob/master/LICENSE
+Mockito JUnit Jupiter                   | 3.1.0         | MIT License                | https://github.com/mockito/mockito/blob/master/LICENSE
+JUnit Jupiter API                       | 5.4.2         | Eclipse Public License 2.0 | https://www.eclipse.org/legal/epl-v20.html
+ArchUnit                                | 0.14.1        | Apache License             | Version 2.0, https://www.apache.org/licenses/LICENSE-2.0
+ArchUnit                                | 0.14.1        | BSD                        | https://asm.ow2.io/license.html

@@ -1,3 +1,10 @@
+/**
+ * Copyright (c) Orange. All Rights Reserved.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 package com.orange.lo.sample.lo2iothub.azure;
 
 import com.microsoft.azure.sdk.iot.device.DeviceClient;
@@ -11,7 +18,6 @@ import com.microsoft.azure.sdk.iot.device.MessageProperty;
 import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.microsoft.azure.sdk.iot.device.transport.RetryDecision;
 import com.microsoft.azure.sdk.iot.service.Device;
-import com.orange.lo.sample.lo2iothub.AzureIotHubProperties;
 import com.orange.lo.sample.lo2iothub.exceptions.CommandException;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 
