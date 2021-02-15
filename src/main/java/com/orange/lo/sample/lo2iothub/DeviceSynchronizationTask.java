@@ -19,7 +19,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import com.orange.lo.sample.lo2iothub.lo.model.LoDevice;
+import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.integration.endpoint.MessageProducerSupport;
@@ -48,7 +48,7 @@ public class DeviceSynchronizationTask implements Runnable {
         try {
 
             Set<String> loIds = loApiClient.getDevices(azureIotHubProperties.getLoDevicesGroup()).stream()
-                    .map(LoDevice::getId)
+                    .map(loDevice -> StringEscapeUtils.escapeJava(loDevice.getId()))
                     .collect(Collectors.toSet());
             if (!loIds.isEmpty()) {
                 int poolSize = azureIotHubProperties.getSynchronizationThreadPoolSize();
@@ -63,10 +63,14 @@ public class DeviceSynchronizationTask implements Runnable {
                 synchronizingExecutor.shutdown();
                 synchronizingExecutor.awaitTermination(synchronizationTimeout, TimeUnit.SECONDS);
             }
-            Set<String> iotIds = iotHubAdapter.getDevices().stream().map(IoTDevice::getId).collect(Collectors.toSet());
+            Set<String> iotIds = iotHubAdapter.getDevices().stream()
+                    .map(ioTDevice -> StringEscapeUtils.escapeJava(ioTDevice.getId()))
+                    .collect(Collectors.toSet());
             iotIds.removeAll(loIds);
             iotIds.forEach(id -> {
-                LOG.debug("remove from cache and iot device {}", id);
+                if(LOG.isDebugEnabled()) {
+                    LOG.debug("remove from cache and iot device {}", StringEscapeUtils.escapeJava(id));
+                }
                 iotHubAdapter.deleteDevice(id);
             });
 

@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.configurationprocessor.json.JSONException;
@@ -119,7 +120,9 @@ public class IotHubAdapter {
                 deviceClient.registerConnectionStatusChangeCallback(new ConnectionStatusChangeCallback(), deviceId);
                 deviceClient.open();
                 iotClientCache.add(deviceId, deviceClient);
-                LOG.info("Device client created for {}", deviceId);
+                if(LOG.isDebugEnabled()) {
+                    LOG.info("Device client created for {}", StringEscapeUtils.escapeJava(deviceId));
+                }
                 return deviceClient;
             } catch (URISyntaxException | IOException e) {
                 LOG.error("Error while creating device client", e);
