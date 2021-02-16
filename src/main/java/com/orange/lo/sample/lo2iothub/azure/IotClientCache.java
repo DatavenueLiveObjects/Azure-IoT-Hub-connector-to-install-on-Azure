@@ -8,6 +8,7 @@
 package com.orange.lo.sample.lo2iothub.azure;
 
 import com.microsoft.azure.sdk.iot.device.DeviceClient;
+import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +41,8 @@ public class IotClientCache {
                 return true;
             }
         } catch (IOException e) {
-            LOG.error("IOException error while removing device {}: {}", deviceId, e.getMessage());
+            String cleanDeviceId = StringEscapeUtils.escapeHtml4(deviceId);
+            LOG.error("IOException error while removing device {}: {}", cleanDeviceId, e.getMessage());
         }
         return false;
     }
