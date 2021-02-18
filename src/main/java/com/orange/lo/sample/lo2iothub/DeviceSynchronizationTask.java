@@ -19,7 +19,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import org.apache.commons.text.StringEscapeUtils;
+import com.orange.lo.sample.lo2iothub.lo.model.LoDevice;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.integration.endpoint.MessageProducerSupport;
@@ -48,7 +48,7 @@ public class DeviceSynchronizationTask implements Runnable {
         try {
 
             Set<String> loIds = loApiClient.getDevices(azureIotHubProperties.getLoDevicesGroup()).stream()
-                    .map(loDevice -> StringEscapeUtils.escapeHtml4(loDevice.getId()))
+                    .map(LoDevice::getId)
                     .collect(Collectors.toSet());
             if (!loIds.isEmpty()) {
                 int poolSize = azureIotHubProperties.getSynchronizationThreadPoolSize();
@@ -64,7 +64,7 @@ public class DeviceSynchronizationTask implements Runnable {
                 synchronizingExecutor.awaitTermination(synchronizationTimeout, TimeUnit.SECONDS);
             }
             Set<String> iotIds = iotHubAdapter.getDevices().stream()
-                    .map(ioTDevice -> StringEscapeUtils.escapeHtml4(ioTDevice.getId()))
+                    .map(IoTDevice::getId)
                     .collect(Collectors.toSet());
             iotIds.removeAll(loIds);
             iotIds.forEach(id -> {
