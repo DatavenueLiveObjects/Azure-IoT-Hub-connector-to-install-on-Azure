@@ -48,7 +48,7 @@ public class DeviceSynchronizationTask implements Runnable {
         try {
 
             Set<String> loIds = loApiClient.getDevices(azureIotHubProperties.getLoDevicesGroup()).stream()
-                    .map(loDevice -> StringEscapeUtils.escapeJava(loDevice.getId()))
+                    .map(loDevice -> StringEscapeUtils.escapeHtml4(loDevice.getId()))
                     .collect(Collectors.toSet());
             if (!loIds.isEmpty()) {
                 int poolSize = azureIotHubProperties.getSynchronizationThreadPoolSize();
@@ -64,13 +64,11 @@ public class DeviceSynchronizationTask implements Runnable {
                 synchronizingExecutor.awaitTermination(synchronizationTimeout, TimeUnit.SECONDS);
             }
             Set<String> iotIds = iotHubAdapter.getDevices().stream()
-                    .map(ioTDevice -> StringEscapeUtils.escapeJava(ioTDevice.getId()))
+                    .map(ioTDevice -> StringEscapeUtils.escapeHtml4(ioTDevice.getId()))
                     .collect(Collectors.toSet());
             iotIds.removeAll(loIds);
             iotIds.forEach(id -> {
-                if(LOG.isDebugEnabled()) {
-                    LOG.debug("remove from cache and iot device {}", StringEscapeUtils.escapeJava(id));
-                }
+                LOG.debug("remove from cache and iot device {}", id);
                 iotHubAdapter.deleteDevice(id);
             });
 

@@ -120,9 +120,7 @@ public class IotHubAdapter {
                 deviceClient.registerConnectionStatusChangeCallback(new ConnectionStatusChangeCallback(), deviceId);
                 deviceClient.open();
                 iotClientCache.add(deviceId, deviceClient);
-                if(LOG.isDebugEnabled()) {
-                    LOG.info("Device client created for {}", StringEscapeUtils.escapeJava(deviceId));
-                }
+                LOG.info("Device client created for {}", deviceId);
                 return deviceClient;
             } catch (URISyntaxException | IOException e) {
                 LOG.error("Error while creating device client", e);
