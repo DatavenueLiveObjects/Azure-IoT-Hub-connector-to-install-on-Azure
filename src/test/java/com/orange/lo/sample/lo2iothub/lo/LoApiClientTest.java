@@ -36,8 +36,6 @@ class LoApiClientTest {
 
     @Mock
     private RestTemplate restTemplate;
-    @Mock
-    private HttpHeaders authenticationHeaders;
     private LoApiClient loApiClient;
 
     @BeforeEach
@@ -55,7 +53,9 @@ class LoApiClientTest {
 
         LiveObjectsProperties loProperties = new LiveObjectsProperties();
         loProperties.setApiUrl(API_URL);
-        this.loApiClient = new LoApiClient(restTemplate, loProperties, authenticationHeaders);
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "application/json");
+        this.loApiClient = new LoApiClient(restTemplate, loProperties, headers);
     }
 
     @Test

@@ -27,8 +27,6 @@ class LoCommandSenderTest {
     @Mock
     private RestTemplate restTemplate;
     @Mock
-    private HttpHeaders authenticationHeaders;
-    @Mock
     private ResponseEntity<Void> responseEntity;
 
     private LoCommandSender loCommandSender;
@@ -39,7 +37,9 @@ class LoCommandSenderTest {
                 .thenReturn(responseEntity);
         when(responseEntity.getStatusCode()).thenReturn(HttpStatus.OK);
         this.loProperties = new LiveObjectsProperties();
-        this.loCommandSender = new LoCommandSender(restTemplate, authenticationHeaders, loProperties);
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "application/json");
+        this.loCommandSender = new LoCommandSender(restTemplate, headers, loProperties);
     }
 
     @Test
