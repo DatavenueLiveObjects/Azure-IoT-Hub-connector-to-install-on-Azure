@@ -1,43 +1,40 @@
-/** 
+/**
 * Copyright (c) Orange. All Rights Reserved.
-* 
-* This source code is licensed under the MIT license found in the 
-* LICENSE file in the root directory of this source tree. 
+*
+* This source code is licensed under the MIT license found in the
+* LICENSE file in the root directory of this source tree.
 */
 
 package com.orange.lo.sample.lo2iothub.lo;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orange.lo.sample.lo2iothub.exceptions.CommandException;
-
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
+import com.orange.lo.sdk.LOApiClient;
+import com.orange.lo.sdk.rest.devicemanagement.Commands;
+import com.orange.lo.sdk.rest.devicemanagement.DeviceManagement;
+import com.orange.lo.sdk.rest.model.CommandAddRequest;
+import com.orange.lo.sdk.rest.model.CommandRequest;
+import com.orange.lo.sdk.rest.model.CommandRequestValue;
 
 public class LoCommandSender {
-    private static final String COMMAND_URL_PATH = "v1/deviceMgt/devices/%s/commands?validate=true";
 
-    private LiveObjectsProperties loProperties;
-    private RestTemplate restTemplate;
-    private HttpHeaders authenticationHeaders;
+    private final LOApiClient loApiClient;
+    private final ObjectMapper objectMapper;
 
-    public LoCommandSender(RestTemplate restTemplate, HttpHeaders authenticationHeaders,
-                           LiveObjectsProperties loProperties) {
-        this.restTemplate = restTemplate;
-        this.authenticationHeaders = authenticationHeaders;
-        this.loProperties = loProperties;
+    public LoCommandSender(LOApiClient loApiClient, ObjectMapper objectMapper) {
+        this.loApiClient = loApiClient;
+        this.objectMapper = objectMapper;
     }
 
     public void send(String deviceId, String command) {
-        String s = loProperties.getApiUrl() + "/" + COMMAND_URL_PATH;
-        String url = String.format(s, deviceId);
         try {
-            HttpEntity<String> requestEntity = new HttpEntity<>(command, authenticationHeaders);
-            ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.POST, requestEntity, Void.class);
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new CommandException("Returned status " + response.getStatusCodeValue());
-            }
+            CommandRequestValue commandRequestValue = objectMapper.readValue(command, CommandRequestValue.class);
+            CommandRequest commandRequest = new CommandRequest().value(commandRequestValue);
+            CommandAddRequest commandAddRequest = new CommandAddRequest().withRequest(commandRequest);
+
+            DeviceManagement deviceManagement = loApiClient.getDeviceManagement();
+            Commands commands = deviceManagement.getCommands();
+            commands.addCommand(deviceId, commandAddRequest);
         } catch (Exception e) {
             throw new CommandException(e);
         }

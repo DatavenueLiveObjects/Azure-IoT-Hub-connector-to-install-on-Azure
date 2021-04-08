@@ -3,14 +3,11 @@ package com.orange.lo.sample.lo2iothub.azure;
 import com.microsoft.azure.sdk.iot.device.DeviceClient;
 import com.microsoft.azure.sdk.iot.device.IotHubClientProtocol;
 import com.microsoft.azure.sdk.iot.service.Device;
-import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.support.GenericMessage;
 
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -31,8 +28,6 @@ class IotHubAdapterTest {
     @Mock
     private IoTDeviceProvider ioTDeviceProvider;
     @Mock
-    private LoCommandSender loCommandSender;
-    @Mock
     private MessageSender messageSender;
     @Mock
     private IotClientCache iotClientCache;
@@ -45,14 +40,14 @@ class IotHubAdapterTest {
 
     @BeforeEach
     void setUp() throws URISyntaxException {
-        iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, loCommandSender, messageSender, iotClientCache, iotHubProperties);
+        iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, messageSender, iotClientCache, iotHubProperties);
         deviceClient = new DeviceClient(CONNECTION_STRING, IotHubClientProtocol.MQTT);
     }
 
     @Test
     void shouldCallMessageSenderWhenMessageIsSent() {
         when(iotClientCache.get(any())).thenReturn(deviceClient);
-        Message<String> message = new GenericMessage<>("{\"metadata\":{\"source\":\"iot-device-id\"}}");
+        String message = "{\"metadata\":{\"source\":\"iot-device-id\"}}";
 
         iotHubAdapter.sendMessage(message);
 

@@ -1,16 +1,19 @@
-/** 
-* Copyright (c) Orange. All Rights Reserved.
-* 
-* This source code is licensed under the MIT license found in the 
-* LICENSE file in the root directory of this source tree. 
-*/
+/**
+ * Copyright (c) Orange. All Rights Reserved.
+ * <p>
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 package com.orange.lo.sample.lo2iothub;
 
 import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
 import com.orange.lo.sample.lo2iothub.azure.IoTDevice;
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
-import com.orange.lo.sample.lo2iothub.lo.LoApiClient;
+import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
+import com.orange.lo.sdk.rest.model.Device;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.invoke.MethodHandles;
 import java.util.Set;
@@ -19,25 +22,17 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import com.orange.lo.sample.lo2iothub.lo.model.LoDevice;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.integration.endpoint.MessageProducerSupport;
-
 public class DeviceSynchronizationTask implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-    private IotHubAdapter iotHubAdapter;
-    private MessageProducerSupport messageProducerSupport;
-    private LoApiClient loApiClient;
-    private AzureIotHubProperties azureIotHubProperties;
+    private final IotHubAdapter iotHubAdapter;
+    private final LoAdapter loAdapter;
+    private final AzureIotHubProperties azureIotHubProperties;
 
-    public DeviceSynchronizationTask(IotHubAdapter iotHubAdapter, MessageProducerSupport messageProducerSupport,
-                                     LoApiClient loApiClient, AzureIotHubProperties azureIotHubProperties) {
+    public DeviceSynchronizationTask(IotHubAdapter iotHubAdapter, LoAdapter loAdapter, AzureIotHubProperties azureIotHubProperties) {
         this.iotHubAdapter = iotHubAdapter;
-        this.messageProducerSupport = messageProducerSupport;
-        this.loApiClient = loApiClient;
+        this.loAdapter = loAdapter;
         this.azureIotHubProperties = azureIotHubProperties;
     }
 
@@ -47,8 +42,8 @@ public class DeviceSynchronizationTask implements Runnable {
         LOG.debug("Synchronizing devices for group {}", azureIotHubProperties.getLoDevicesGroup());
         try {
 
-            Set<String> loIds = loApiClient.getDevices(azureIotHubProperties.getLoDevicesGroup()).stream()
-                    .map(LoDevice::getId)
+            Set<String> loIds = loAdapter.getDevices(azureIotHubProperties.getLoDevicesGroup()).stream()
+                    .map(Device::getId)
                     .collect(Collectors.toSet());
             if (!loIds.isEmpty()) {
                 int poolSize = azureIotHubProperties.getSynchronizationThreadPoolSize();
@@ -76,7 +71,7 @@ public class DeviceSynchronizationTask implements Runnable {
             LOG.error("Error while synchronizing devices", e);
         }
 
-        messageProducerSupport.start();
+        loAdapter.startListeningForMessages();
     }
 
     private static int calculateSynchronizationTimeout(int devices, int threadPoolSize) {
