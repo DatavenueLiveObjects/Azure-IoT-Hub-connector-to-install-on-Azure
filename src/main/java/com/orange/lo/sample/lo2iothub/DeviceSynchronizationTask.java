@@ -73,8 +73,4 @@ public class DeviceSynchronizationTask implements Runnable {
         loAdapter.startListeningForMessages();
     }
 
-    private static int calculateSynchronizationTimeout(int devices, int threadPoolSize) {
-        return (devices / threadPoolSize + 1) * 5; // max 5 seconds for 1 operation
-    }
-
 }

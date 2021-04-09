@@ -19,7 +19,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -60,7 +59,7 @@ class DeviceSynchronizationTaskTest {
         executor.execute(deviceSynchronizationTask);
         executor.awaitTermination(2, TimeUnit.SECONDS);
 
-        verify(loAdapter, times(1)).getDevices(eq(LO_DEVICES_GROUP));
+        verify(loAdapter, times(1)).getDevices(LO_DEVICES_GROUP);
         verify(iotHubAdapter, times(2)).createDeviceClient(anyString());
         verify(iotHubAdapter, times(1)).getDevices();
         verify(iotHubAdapter, times(1)).deleteDevice(anyString());

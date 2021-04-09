@@ -33,25 +33,33 @@ public class MessageHandler implements DataManagementFifoCallback {
         String messageType = getMessageType(message);
         LOG.info("Received message of the type: {}", messageType);
         switch (messageType) {
-            case DATA_MESSAGE_TYPE: {
-                counterProvider.evtReceived().increment();
-                iotHubAdapter.sendMessage(message);
+            case DATA_MESSAGE_TYPE:
+                handleDataMessage(message);
                 break;
-            }
-            case DEVICE_CREATED_MESSAGE_TYPE: {
-                Optional<String> deviceId = getDeviceId(message);
-                deviceId.ifPresent(iotHubAdapter::createDeviceClient);
+            case DEVICE_CREATED_MESSAGE_TYPE:
+                handleDeviceCreationEvent(message);
                 break;
-            }
-            case DEVICE_DELETED_MESSAGE_TYPE: {
-                Optional<String> deviceId = getDeviceId(message);
-                deviceId.ifPresent(iotHubAdapter::deleteDevice);
+            case DEVICE_DELETED_MESSAGE_TYPE:
+                handleDeviceRemovalEvent(message);
                 break;
-            }
-            default: {
+            default:
                 LOG.error("Unknown message type of message: {}", message);
-            }
         }
+    }
+
+    private void handleDataMessage(String message) {
+        counterProvider.evtReceived().increment();
+        iotHubAdapter.sendMessage(message);
+    }
+
+    private void handleDeviceCreationEvent(String message) {
+        Optional<String> deviceId = getDeviceId(message);
+        deviceId.ifPresent(iotHubAdapter::createDeviceClient);
+    }
+
+    private void handleDeviceRemovalEvent(String message) {
+        Optional<String> deviceId = getDeviceId(message);
+        deviceId.ifPresent(iotHubAdapter::deleteDevice);
     }
 
     private static Optional<String> getDeviceId(String msg) {
