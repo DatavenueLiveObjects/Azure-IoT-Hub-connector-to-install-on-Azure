@@ -7,6 +7,7 @@ import com.orange.lo.sdk.rest.devicemanagement.GetGroupsFilter;
 import com.orange.lo.sdk.rest.devicemanagement.Groups;
 import com.orange.lo.sdk.rest.devicemanagement.Inventory;
 import com.orange.lo.sdk.rest.model.Device;
+import net.jodah.failsafe.RetryPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,7 +52,7 @@ class LoAdapterTest {
         when(groups.getGroups(any(GetGroupsFilter.class))).thenReturn(new ArrayList<>());
         when(inventory.getDevices(any(GetDevicesFilter.class))).thenReturn(DEVICES);
 
-        this.loAdapter = new LoAdapter(loApiClient, PAGE_SIZE);
+        this.loAdapter = new LoAdapter(loApiClient, PAGE_SIZE, new RetryPolicy<>(), new RetryPolicy<>());
     }
 
     @Test

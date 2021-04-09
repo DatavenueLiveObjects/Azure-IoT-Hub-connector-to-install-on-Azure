@@ -29,7 +29,7 @@
 		<dependency>
 			<groupId>com.github.DatavenueLiveObjects</groupId>
 			<artifactId>FIFO_SDK_LiveObjects</artifactId>
-			<version>commands-SNAPSHOT</version>
+			<version>main-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -72,6 +72,11 @@
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-text</artifactId>
 			<version>1.9</version>
+		</dependency>
+		<dependency>
+			<groupId>net.jodah</groupId>
+			<artifactId>failsafe</artifactId>
+			<version>2.4.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

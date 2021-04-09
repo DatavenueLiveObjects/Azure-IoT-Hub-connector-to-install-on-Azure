@@ -15,6 +15,8 @@ import com.orange.lo.sdk.rest.devicemanagement.Groups;
 import com.orange.lo.sdk.rest.devicemanagement.Inventory;
 import com.orange.lo.sdk.rest.model.Device;
 import com.orange.lo.sdk.rest.model.Group;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.client.HttpClientErrorException;
@@ -34,11 +36,16 @@ public class LoAdapter {
     private final LOApiClient loApiClient;
     private final Map<String, String> groupsMap;
     private final int pageSize;
+    private final RetryPolicy<List<Group>> groupRetryPolicy;
+    private final RetryPolicy<List<Device>> deviceRetryPolicy;
 
-    public LoAdapter(LOApiClient loApiClient, int pageSize) {
+    public LoAdapter(LOApiClient loApiClient, int pageSize, RetryPolicy<List<Group>> groupRetryPolicy,
+                     RetryPolicy<List<Device>> deviceRetryPolicy) {
         this.loApiClient = loApiClient;
         this.groupsMap = new HashMap<>();
         this.pageSize = pageSize;
+        this.groupRetryPolicy = groupRetryPolicy;
+        this.deviceRetryPolicy = deviceRetryPolicy;
         initialize();
     }
 
@@ -60,7 +67,8 @@ public class LoAdapter {
             try {
                 GetGroupsFilter groupsFilter = new GetGroupsFilter().withLimit(pageSize)
                         .withOffset(offset * pageSize);
-                List<Group> loGroups = groups.getGroups(groupsFilter);
+                List<Group> loGroups = Failsafe.with(groupRetryPolicy)
+                        .get(() -> groups.getGroups(groupsFilter));
                 loGroups.forEach(g -> groupsMap.put(g.getPathNode(), g.getId()));
                 if (loGroups.size() < pageSize) {
                     break;
@@ -82,7 +90,8 @@ public class LoAdapter {
                     .withGroupId(groupsMapOrDefault)
                     .withLimit(pageSize)
                     .withOffset(offset * pageSize);
-            List<Device> loDevices = inventory.getDevices(devicesFilter);
+            List<Device> loDevices = Failsafe.with(deviceRetryPolicy)
+                    .get(() -> inventory.getDevices(devicesFilter));
             LOG.trace("Got {} devices", loDevices.size());
             devices.addAll(loDevices);
             if (loDevices.size() < pageSize) {
