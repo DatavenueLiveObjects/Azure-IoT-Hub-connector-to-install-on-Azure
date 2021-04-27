@@ -28,7 +28,7 @@ Live Objects platform supports load balancing between multiple MQTT subscribers.
 
 ## Technologies
 * Java 8
-* Spring Boot 2.1.8.RELEASE
+* Spring Boot 2.4.4
 * Microsoft Azure SDK IoT 1.22.0
 * Microsoft Application Insights Java SDK Spring Boot Starter 2.5.1
 * Azure Metrics Spring Boot Starter 2.2.1
