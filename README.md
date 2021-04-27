@@ -2,13 +2,12 @@
 * [General info](#general-info)
 * [Technologies](#technologies)
 * [Requirements](#requirements)
- * [Building and installation](#building-and-installation)
+* [Building and installation](#building-and-installation)
 * [Configuration](#configuration)
-    * [Logging](#logging)
-    * [Azure Webapp Maven Plugin](#azure-webapp-maven-plugin)
-    * [Connector](#connector)
+  * [Connector](#connector)
+  * [Logging](#logging)
 * [Launching](#launching)
-* [Installation](#installation)
+* [Deploy on Azure Linux virtual machine](#deploy-on-azure-linux-virtual-machine)
 
 ## General info
 ![Architecture](./assets/architecture2.png)
@@ -31,7 +30,6 @@ Live Objects platform supports load balancing between multiple MQTT subscribers.
 * Java 8
 * Spring Boot 2.1.8.RELEASE
 * Microsoft Azure SDK IoT 1.22.0
-* Guava 28.1-jre
 * Microsoft Application Insights Java SDK Spring Boot Starter 2.5.1
 * Azure Metrics Spring Boot Starter 2.2.1
 
