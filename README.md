@@ -2,10 +2,12 @@
 * [General info](#general-info)
 * [Technologies](#technologies)
 * [Requirements](#requirements)
+ * [Building and installation](#building-and-installation)
 * [Configuration](#configuration)
     * [Logging](#logging)
     * [Azure Webapp Maven Plugin](#azure-webapp-maven-plugin)
     * [Connector](#connector)
+* [Launching](#launching)
 * [Installation](#installation)
 
 ## General info
@@ -43,6 +45,21 @@ In order to run the connector you need to have:
 * **Java SE Development Kit 8 installed**
 * **Apache Maven installed**
 
+## Building and installation
+In order to create an installation package, run the command:
+```
+mvn clean package -Prelease
+```
+After running this command, the file  `lo2iot-[VERSION].zip` will be created in the target directory. This file should be placed where the connector will be started, and then unpacked. You can deploy this connector wherever you want (local server, cloud provider etc.).
+
+After unpacking the archive, you should get a structure similar to this:
+```
+bin/
+conf/
+data/
+lib/
+```
+
 ## Configuration
 
 ### Connector
@@ -52,106 +69,88 @@ All configuration can be found in **application.yaml** file located in src/main/
 1    tenant-list:
 2      - 
 3        live-objects-properties:
-4          api-key: YOUR_API_KEY
-5          api-url: https://liveobjects.orange-business.com/api
-6      
-7          uri: ssl://liveobjects.orange-business.com:8883
-8          username: application
-9
-10         clientId: mqtt2iot
-11         recovery-interval: 10000
-12         completion-timeout: 20000
-13         connection-timeout: 30000
-14         qos: 1
-15         keep-alive-interval-seconds: 0
-16         page-size: 20
-17  
-18         synchronization-device-interval: 10
-19  
-20       azure-iot-hub-list:
-21         -
-22           iot-connection-string: YOUR_IOT_CONNECTION_STRING
-23           iot-host-name: YOUR_IOT_HOST_NAME
-24           synchronization-thread-pool-size: 40
-25           device-client-connection-timeout: 5000
-26           tagPlatformKey: platform
-27           tagPlatformValue: LiveObjectsGroupIoT1
-28    
-29           lo-messages-topic: MESSAGES_TOPIC
-30           lo-devices-topic: DEVICES_TOPIC
-31           lo-devices-group: DEVICES_GROUP
-32
-33         -
-34           iot-connection-string: YOUR_IOT_CONNECTION_STRING
-35           iot-host-name: YOUR_IOT_HOST_NAME
-36           synchronization-thread-pool-size: 40
-37           device-client-connection-timeout: 5000
-38           tagPlatformKey: platform
-39           tagPlatformValue: LiveObjectsGroupIoT1
-40    
-41           lo-messages-topic: MESSAGES_TOPIC
-42           lo-devices-topic: DEVICES_TOPIC
-43           lo-devices-group: DEVICES_GROUP
-44
-45   azure:
-46     application-insights:
-47       instrumentation-key: YOUR_INSTMENTATION_KEY
-48       channel:
-49         in-process:
-50           developer-mode: true
-51           max-telemetry-buffer-capacity: 500
-52           flush-interval-in-seconds: 5
+4          hostname: liveobjects.orange-business.com
+5          api-key: YOUR_API_KEY
+6          username: application
+7          connection-timeout: 30000
+8          qos: 1
+9          keep-alive-interval-seconds: 30
+10         page-size: 20
+11         synchronization-device-interval: 10
+12         mqtt-persistence-dir: ${basedir:.}/temp/
+13  
+14       azure-iot-hub-list:
+15         -
+16           iot-connection-string: YOUR_IOT_CONNECTION_STRING
+17           iot-host-name: YOUR_IOT_HOST_NAME
+18           synchronization-thread-pool-size: 40
+19           device-client-connection-timeout: 5000
+20           tagPlatformKey: platform
+21           tagPlatformValue: LiveObjectsGroupIoT1
+22    
+23           lo-messages-topic: MESSAGES_TOPIC
+24           lo-devices-topic: DEVICES_TOPIC
+25           lo-devices-group: DEVICES_GROUP
+26
+27         -
+28           iot-connection-string: YOUR_IOT_CONNECTION_STRING
+29           iot-host-name: YOUR_IOT_HOST_NAME
+30           synchronization-thread-pool-size: 40
+31           device-client-connection-timeout: 5000
+32           tagPlatformKey: platform
+33           tagPlatformValue: LiveObjectsGroupIoT1
+34    
+35           lo-messages-topic: MESSAGES_TOPIC
+36           lo-devices-topic: DEVICES_TOPIC
+37           lo-devices-group: DEVICES_GROUP
+38
+39   azure:
+40     application-insights:
+41       instrumentation-key: YOUR_INSTMENTATION_KEY
+42       channel:
+43         in-process:
+44           developer-mode: true
+45           max-telemetry-buffer-capacity: 500
+46           flush-interval-in-seconds: 5
+47
+48   management:
+49     endpoints:
+50       web:
+51         exposure:
+52           include: "*"
 53
-54   management:
-55     endpoints:
-56       web:
-57         exposure:
-58           include: "*"
-59
-60   spring:
-61     application:
-62       name: Lo2IotHub
+54   spring:
+55     application:
+56       name: Lo2IotHub
 ```
+
+#### hostname
+Live Objects hostname
 
 #### api-key
 Live Objects API key with at least DEVICE_R, DEVICE_W and BUS_R roles
 
-Login to Live Objects Web Portal an go to **Administration** -> **API keys** 
+Login to Live Objects Web Portal an go to **Administration** -> **API keys**
 
-![Api Keys 1](./assets/api_key_1.png) 
+![Api Keys 1](./assets/api_key_1.png)
 
-Click **Add** button and fill fields. 
+Click **Add** button and fill fields.
 
 ![Api Keys 2](./assets/api_key_2_.png)
 
 To  validate  the  creation  of  the  key,  click  on  the  **Create**  button.  Your  key  is  generated  in  the form of an alphanumeric sequence and aQR code.
 
-#### api-url
-REST API endpoint url, leave the value of https://liveobjects.orange-business.com/api
-
-#### uri
-Live Objects mqtt url, leave the value of ssl://liveobjects.orange-business.com:8883
-
 #### username
 Live Objects mqtt username (should be set to **application**)
-
-#### clientId
-Unique identifier for client connected to the broker. Can be freely changed
-
-#### recovery-interval
-Controls the interval (in miliseconds) at which the mqtt client attempts to reconnect after a failure. It defaults to 10000ms (10 seconds)
-
-#### completion-timeout
-Set the completion timeout for mqtt operations in miliseconds
 
 #### connection-timeout
 This value, measured in seconds, defines the maximum time interval the client will wait for the network connection to the MQTT server to be established
 
+#### qos
+Message QoS
+
 #### keep-alive-interval-seconds
 This value, measured in seconds, defines the maximum time interval between messages sent or received. It enables the client to detect if the server is no longer available, without having to wait for the TCP/IP timeout. The client will ensure that at least one message travels across the network within each keep alive period.  In the absence of a data-related message during the time period, the client sends a very small "ping" message, which the server will acknowledge. A value of 0 disables keepalive processing in the client.
-
-#### qos
-Message QoS 
 
 #### page-size
 Maximum number of devices in single response. Max 1000
@@ -203,11 +202,11 @@ Click **Add** button and fill fields
 
 And click **Register** button
 
-Later you need to create routing. Go to **Data -> Routing**
+Later you need to create routing. Go to **Data -> Routing** and click **Add a routing rule**
 
 ![Routing 1](./assets/routing_1.png)
 
-Click **Add a routing rule** and give a routing name and click **Next** button
+Choose **Forward to your servers in MQTTs, through FIFO queues** by clicking **+ FIFO** button and select your fifo for storing messages. Click **Next** button
 
 ![Routing 1](./assets/routing_m_2.png)
 
@@ -215,7 +214,7 @@ Choose a message type of **Data message**, in **Filters** section select **A fil
 
 ![Routing 1](./assets/routing_m_3.png)
 
-Choose **Forward to one or more FIFOs** by clicking **+ FIFO** button and select your fifo for storing messages. Click **Complete** button
+Give a routing name and click **Complete** button
 
 ![Routing 1](./assets/routing_m_4.png)
 
@@ -231,11 +230,11 @@ Click **Add** button and fill fields
 
 And click **Register** button
 
-Later you need to create routing. Go to **Data -> Routing**
+Later you need to create routing. Go to **Data -> Routing** and click **Add a routing rule**
 
 ![Routing 1](./assets/routing_1.png)
 
-Click **Add a routing rule** and give a routing name and click **Next** button
+Choose **Forward to your servers in MQTTs, through FIFO queues** by clicking **+ FIFO** button and select your fifo for storing devices events. Click **Next** button
 
 ![Routing 1](./assets/routing_d_2.png)
 
@@ -243,11 +242,13 @@ Choose a message type of **Device created event**, in **Filters** section select
 
 ![Routing 1](./assets/routing_d_3.png)
 
-Choose **Forward to one or more FIFOs** by clicking **+ FIFO** button and select your fifo for storing devices events. Click **Complete** button
+Give a routing name and click **Complete** button
 
 ![Routing 1](./assets/routing_d_4.png)
 
-Repeat last step and create new routing for **Device deleted event** (choose the same fifo as for Device created event) 
+Repeat last step and create new routing for **Device deleted event** (choose the same fifo as for Device created event)
+
+![Routing 1](./assets/routing_d_5.png)
 
 #### instrumentation-key
 The value of this parameter can be found in the details of Application Insights:
@@ -258,43 +259,48 @@ The value of this parameter can be found in the details of Application Insights:
 ### Logging
 Logging configuration can be found in **logback.xml** file located in src/main/resources. You can find more information about how to configure your logs [here](http://logback.qos.ch/manual/configuration.html)
 
-### Azure Webapp Maven Plugin
-Deployment to Azure is performed by the Azure Webapp Maven Plugin. Its configuration is included in `pom.xml` file within the connector project.
-The following lines are relevant:
+## Launching
+In order to run the connector, use the `app.sh` file for linux or `app.bat` if you are using windows. These files are located in the `bin/` directory.
 
+## Deploy on Azure Linux virtual machine
+You can deploy this connector wherever you want (local server, cloud provider etc.). As an example we provide instruction how to deploy this connector on Azure Virtual Machine. You can do this by following these steps:
+
+- Install Azure CLI (installation process is described in official [documentation](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)) and log in with the command:
+  ```
+  az login
+  ```
+- Create a [resource group](https://docs.microsoft.com/en-us/cli/azure/group?view=azure-cli-latest#az_group_create) and a [virtual machine](https://docs.microsoft.com/en-us/cli/azure/vm?view=azure-cli-latest#az_vm_create). Examples of command usage:
+  ```
+  az group create --name IoT-Hub-connector --location westeurope
+  ```
+  ```
+  az vm create -n IoT-Hub-connector -g IoT-Hub-connector --image UbuntuLTS --admin-username azureuser
+  ```
+- Provide correct parameters in `application.yaml` and create an installation package with the command:
+  ```
+  mvn clean package -Prelease
+  ```
+- Copy the file to the virtual machine ([documentation](https://docs.microsoft.com/pl-pl/azure/virtual-machines/linux/copy-files-to-linux-vm-using-scp)):
+  ```
+  scp target/lo2iot-1.0.zip azureuser@YOUR_MACHINE_IP:~
+  ```
+- Install unzip and java  
+  ```
+  sudo apt-get install unzip
+  ```
+  ```
+  sudo apt-get install openjdk-11-jdk -y
+  ```
+- Unpack the installation package:
+  ```
+  unzip lo2iot-1.0.zip 
+  ```
+- Run `start.sh` script:
+  ```
+  ./lo2iot-1.0/bin/app.sh
+  ```
+
+If you want to stop and completely delete this machine you should run:
 ```
-<resourceGroup>YourResourceGroupName</resourceGroup>
-<appServicePlanName>YourAppServicePlanName</appServicePlanName>
-<appName>lo2iothub</appName>
+az group delete -n IoT-Hub-connector
 ```
-
-The `resourceGroup` and `appServicePlanName` should correspond to values provided during App Service Plan creation. These values can be found in the details of the App Service Plan:  
-
-![Service Plan 1](./assets/service_plan_1.png) 
-
-Application name will be used to uniquely identify the deployed connector app.
-
-### Installation
-
-In order to be deployed to Azure, the project uses Azure Webapp Maven Plugin. The installation description is based on the following [documentation](https://docs.microsoft.com/en-us/java/azure/spring-framework/deploy-spring-boot-java-app-with-maven-plugin).
-
-#### Azure login
-
-In order to deploy the application, the prerequisite is to have a logged session to Azure. Run the following command using Azure CLI tool:
-```
-az login
-```
-Follow the instructions to complete the login process. 
-
-#### Build and deployment of the connector
-
-Build the JAR file using command:
-```
-mvn clean package
-```
-Deploy the application with the command:
-```
-mvn azure-webapp:deploy
-```
-
-If you repeat those steps, application will be redeployed, replacing the previously-deployed instance on Azure. Please keep in mind that you don’t have to repeat the login to Azure (unless the session expired, which will result in appropriate error message during app deployment).
