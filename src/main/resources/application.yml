@@ -1,22 +1,16 @@
 tenant-list:
   - 
     live-objects-properties:
+      hostname: liveobjects.orange-business.com
       api-key: YOUR_API_KEY
-      api-url: https://liveobjects.orange-business.com/api
-  
-      uri: ssl://liveobjects.orange-business.com:8883
       username: application
-
-      clientId: mqtt2iot
-      recovery-interval: 10000
-      completion-timeout: 20000
       connection-timeout: 30000
       qos: 1
-      keep-alive-interval-seconds: 0
+      keep-alive-interval-seconds: 30
       page-size: 20
-  
       synchronization-device-interval: 10
-  
+      mqtt-persistence-dir: ${basedir:.}/temp/
+
     azure-iot-hub-list:
       -
         iot-connection-string: YOUR_IOT_CONNECTION_STRING
@@ -37,7 +31,7 @@ tenant-list:
         device-client-connection-timeout: 5000
         tagPlatformKey: platform
         tagPlatformValue: LiveObjectsGroupIoT1
-    
+
         lo-messages-topic: MESSAGES_TOPIC
         lo-devices-topic: DEVICES_TOPIC
         lo-devices-group: DEVICES_GROUP

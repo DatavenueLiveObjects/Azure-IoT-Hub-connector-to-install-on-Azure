@@ -7,7 +7,6 @@
 
 package com.orange.lo.sample.lo2iothub.azure;
 
-import com.google.common.collect.Lists;
 import com.microsoft.azure.sdk.iot.service.Device;
 import com.microsoft.azure.sdk.iot.service.RegistryManager;
 import com.microsoft.azure.sdk.iot.service.devicetwin.DeviceTwin;
@@ -20,6 +19,7 @@ import com.microsoft.azure.sdk.iot.service.exceptions.IotHubNotFoundException;
 import com.orange.lo.sample.lo2iothub.exceptions.IotDeviceProviderException;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -50,7 +50,7 @@ public class IoTDeviceProvider {
     }
 
     public List<IoTDevice> getDevices() {
-        List<IoTDevice> list = Lists.newArrayList();
+        List<IoTDevice> list = new ArrayList<>();
         try {
             String where = "tags." + tagPlatformKey + "=" + "'" + tagPlatformValue + "'";
             SqlQuery sqlQuery = SqlQuery.createSqlQuery("*", SqlQuery.FromType.DEVICES, where, null);

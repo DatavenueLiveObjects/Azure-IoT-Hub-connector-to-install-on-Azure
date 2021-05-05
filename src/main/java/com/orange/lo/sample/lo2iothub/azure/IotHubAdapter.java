@@ -46,20 +46,23 @@ public class IotHubAdapter {
     private AzureIotHubProperties iotHubProperties;
     private ExecutorService executorService;
 
-    public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider, LoCommandSender loCommandSender,
+    public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider,
                          MessageSender messageSender, IotClientCache iotClientCache,
                          AzureIotHubProperties iotHubProperties) {
         this.ioTDeviceProvider = ioTDeviceProvider;
-        this.loCommandSender = loCommandSender;
         this.messageSender = messageSender;
         this.iotClientCache = iotClientCache;
         this.iotHubProperties = iotHubProperties;
         this.executorService = Executors.newCachedThreadPool();
     }
 
-    public void sendMessage(org.springframework.messaging.Message<String> msg) {
+    public void setLoCommandSender(LoCommandSender loCommandSender) {
+        this.loCommandSender = loCommandSender;
+    }
+
+    public void sendMessage(String msg) {
         try {
-            String loClientId = getSourceDeviceId(msg.getPayload());
+            String loClientId = getSourceDeviceId(msg);
             DeviceClient deviceClient = iotClientCache.get(loClientId);
             if (deviceClient != null) {
                 messageSender.sendMessage(msg, deviceClient);
@@ -72,7 +75,7 @@ public class IotHubAdapter {
         } catch (IllegalArgumentException e) {
             LOG.error("Error while sending message", e);
         } catch (JSONException e) {
-            LOG.error("Cannot retrieve device id from message, message not sent {}", msg.getPayload());
+            LOG.error("Cannot retrieve device id from message, message not sent {}", msg);
         } catch (Exception e) {
             LOG.error("Cannot send message", e);
         }

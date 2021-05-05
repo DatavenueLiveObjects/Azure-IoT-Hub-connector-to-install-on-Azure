@@ -30,9 +30,9 @@ class TenantPropertiesTest {
 
     @Test
     void shouldSetLiveObjectsProperties() {
-        LiveObjectsProperties liveObjectsProperties = new LiveObjectsProperties();
-        tenantProperties.setLiveObjectsProperties(liveObjectsProperties);
+        LiveObjectsProperties LOProperties = new LiveObjectsProperties();
+        tenantProperties.setLiveObjectsProperties(LOProperties);
 
-        assertEquals(liveObjectsProperties, tenantProperties.getLiveObjectsProperties());
+        assertEquals(LOProperties, tenantProperties.getLiveObjectsProperties());
     }
 }

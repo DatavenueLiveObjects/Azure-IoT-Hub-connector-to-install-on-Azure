@@ -16,7 +16,6 @@ import java.lang.invoke.MethodHandles;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -30,10 +29,10 @@ public class MessageSender {
         this.counterProvider = counterProvider;
     }
 
-    public void sendMessage(Message<String> msg, DeviceClient deviceClient) {
+    public void sendMessage(String msg, DeviceClient deviceClient) {
         counterProvider.evtAttempt().increment();
         com.microsoft.azure.sdk.iot.device.Message message =
-                new com.microsoft.azure.sdk.iot.device.Message(msg.getPayload());
+                new com.microsoft.azure.sdk.iot.device.Message(msg);
         deviceClient.sendEventAsync(message, new EventCallback(), message);
     }
 

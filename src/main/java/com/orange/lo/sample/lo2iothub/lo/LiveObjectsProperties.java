@@ -1,6 +1,6 @@
 /**
  * Copyright (c) Orange. All Rights Reserved.
- *
+ * <p>
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -9,25 +9,22 @@ package com.orange.lo.sample.lo2iothub.lo;
 
 public class LiveObjectsProperties {
 
-    private String apiKey;
-    private String apiUrl;
-    private String uri;
+    private String hostname;
     private String username;
-    private String clientId;
-    private int recoveryInterval;
-    private int completionTimeout;
+    private String apiKey;
+    private String mqttPersistenceDir;
     private int connectionTimeout;
     private int qos;
     private int keepAliveIntervalSeconds;
     private int pageSize;
     private int synchronizationDeviceInterval;
 
-    public String getUri() {
-        return uri;
+    public String getHostname() {
+        return hostname;
     }
 
-    public void setUri(String uri) {
-        this.uri = uri;
+    public void setHostname(String hostname) {
+        this.hostname = hostname;
     }
 
     public String getApiKey() {
@@ -42,28 +39,12 @@ public class LiveObjectsProperties {
         this.username = username;
     }
 
-    public String getClientId() {
-        return clientId;
+    public String getMqttPersistenceDir() {
+        return mqttPersistenceDir;
     }
 
-    public void setClientId(String clientId) {
-        this.clientId = clientId;
-    }
-
-    public int getRecoveryInterval() {
-        return recoveryInterval;
-    }
-
-    public void setRecoveryInterval(int recoveryInterval) {
-        this.recoveryInterval = recoveryInterval;
-    }
-
-    public int getCompletionTimeout() {
-        return completionTimeout;
-    }
-
-    public void setCompletionTimeout(int completionTimeout) {
-        this.completionTimeout = completionTimeout;
+    public void setMqttPersistenceDir(String mqttPersistenceDir) {
+        this.mqttPersistenceDir = mqttPersistenceDir;
     }
 
     public int getConnectionTimeout() {
@@ -100,14 +81,6 @@ public class LiveObjectsProperties {
 
     public void setPageSize(int pageSize) {
         this.pageSize = pageSize;
-    }
-
-    public String getApiUrl() {
-        return apiUrl;
-    }
-
-    public void setApiUrl(String apiUrl) {
-        this.apiUrl = apiUrl;
     }
 
     public int getSynchronizationDeviceInterval() {
