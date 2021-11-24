@@ -2,7 +2,8 @@
 * [General info](#general-info)
 * [Technologies](#technologies)
 * [Requirements](#requirements)
-* [Building and installation](#building-and-installation)
+* [Getting the installation package](#getting-the-installation-package)
+* [Installation](#installation)
 * [Configuration](#configuration)
   * [Connector](#connector)
   * [Logging](#logging)
@@ -40,15 +41,27 @@ In order to run the connector you need to have:
 * **Azure CLI installed** (installation process is described in official [documentation](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest))
 * **Application Insights resource created (per each Iot Hub)** (creation process is described in official [documentation](https://docs.microsoft.com/pl-pl/azure/azure-monitor/app/create-new-resource)) 
 * **App Service plan created (per each Iot Hub)** (creation process is described in official [documentation](https://docs.microsoft.com/en-us/azure/app-service/app-service-plan-manage))
-* **Java SE Development Kit 8 installed**
-* **Apache Maven installed**
+* **Development tools (only when building the package)**
+ * **Java SE Development Kit 8**
+ * **Apache Maven**
 
-## Building and installation
-In order to create an installation package, run the command:
+## Getting the installation package
+
+The installation package can be acquired in one of two ways:
+
+### Release
+
+It can be downloaded from https://github.com/DatavenueLiveObjects/Azure-IoT-Hub-connector-to-install-on-Azure/releases
+
+### Building
 ```
 mvn clean package -Prelease
 ```
-After running this command, the file  `lo2iot-[VERSION].zip` will be created in the target directory. This file should be placed where the connector will be started, and then unpacked. You can deploy this connector wherever you want (local server, cloud provider etc.).
+After running this command, the file  `lo2iot-[VERSION].zip` will be created in the target directory. This file should be placed where the connector will be started, and then unpacked. 
+
+## Installation
+
+The file downloaded/created above should be placed where the connector will be started, and then unpacked. You can deploy this connector wherever you want (local server, cloud provider etc.).
 
 After unpacking the archive, you should get a structure similar to this:
 ```
