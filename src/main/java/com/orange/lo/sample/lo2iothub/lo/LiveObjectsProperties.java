@@ -9,6 +9,8 @@ package com.orange.lo.sample.lo2iothub.lo;
 
 public class LiveObjectsProperties {
 
+    private static final String CONNECTOR_TYPE = "LO_AZURE_IOTHUB_ADAPTER";
+
     private String hostname;
     private String username;
     private String apiKey;
@@ -18,6 +20,10 @@ public class LiveObjectsProperties {
     private int keepAliveIntervalSeconds;
     private int pageSize;
     private int synchronizationDeviceInterval;
+
+    public String getConnectorType() {
+        return CONNECTOR_TYPE;
+    }
 
     public String getHostname() {
         return hostname;
