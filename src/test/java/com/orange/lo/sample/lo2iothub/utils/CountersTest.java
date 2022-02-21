@@ -1,3 +1,10 @@
+/**
+ * Copyright (c) Orange, Inc. and its affiliates. All Rights Reserved.
+ * <p>
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 package com.orange.lo.sample.lo2iothub.utils;
 
 import io.micrometer.core.instrument.Counter;
