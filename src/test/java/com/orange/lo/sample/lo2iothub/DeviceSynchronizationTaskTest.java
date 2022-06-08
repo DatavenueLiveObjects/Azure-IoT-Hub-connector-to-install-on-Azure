@@ -26,6 +26,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -70,6 +71,6 @@ class DeviceSynchronizationTaskTest {
         verify(iotHubAdapter, times(2)).createDeviceClient(anyString());
         verify(iotHubAdapter, times(1)).getDevices();
         verify(iotHubAdapter, times(1)).deleteDevice(anyString());
-        verify(loAdapter, times(1)).startListeningForMessages();
+        verify(loAdapter, never()).startListeningForMessages();
     }
 }
