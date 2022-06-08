@@ -103,7 +103,7 @@ public class LoAdapter {
     }
 
     public void startListeningForMessages() {
-        LOG.info("Starting listening...");
+        LOG.info("Starting listening for messages...");
         DataManagementFifo dataManagementFifo = loApiClient.getDataManagementFifo();
         dataManagementFifo.connectAndSubscribe();
     }

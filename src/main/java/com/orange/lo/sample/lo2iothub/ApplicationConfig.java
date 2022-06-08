@@ -112,6 +112,7 @@ public class ApplicationConfig {
                     int synchronizationDeviceInterval = liveObjectsProperties.getSynchronizationDeviceInterval();
                     Duration period = Duration.ofSeconds(synchronizationDeviceInterval);
                     taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, period);
+                    loAdapter.startListeningForMessages();
 
                 } catch (IOException e) {
                     throw new InitializationException(e);

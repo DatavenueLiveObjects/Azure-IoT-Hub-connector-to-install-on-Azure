@@ -71,8 +71,6 @@ public class DeviceSynchronizationTask implements Runnable {
         } catch (Exception e) {
             LOG.error("Error while synchronizing devices", e);
         }
-
-        loAdapter.startListeningForMessages();
     }
 
 }
