@@ -129,7 +129,8 @@ public class IotHubAdapter {
                 }
                 return deviceClient;
             } catch (URISyntaxException | IOException e) {
-                LOG.error("Error while creating device client", e);
+                String cleanDeviceId = StringEscapeUtils.escapeHtml4(deviceId);
+                LOG.error("Error while creating device client for " + cleanDeviceId, e);
                 return null;
             }
         }

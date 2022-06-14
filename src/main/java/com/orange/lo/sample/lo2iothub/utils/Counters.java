@@ -7,38 +7,55 @@
 
 package com.orange.lo.sample.lo2iothub.utils;
 
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.MeterRegistry;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.Executors;
+
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.step.StepMeterRegistry;
 
 @Component
 public class Counters {
 
-    private Counter evtReceived;
-    private Counter evtAttempt;
-    private Counter evtSent;
-    private Counter evtFailed;
+    private final Counter mesasageReadCounter;
+    private final Counter mesasageSentAttemptCounter;
+    private final Counter mesasageSentAttemptFailedCounter;
+    private final Counter mesasageSentCounter;
+    private final Counter mesasageSentFailedCounter;
 
-    public Counters(MeterRegistry registry) {
-        evtReceived = registry.counter("evt-received");
-        evtAttempt = registry.counter("evt-attempt");
-        evtSent = registry.counter("evt-sent");
-        evtFailed = registry.counter("evt-failed");
+    public Counters(@Qualifier("counters") StepMeterRegistry registry) {
+        mesasageReadCounter = registry.counter("message.read");
+        mesasageSentAttemptCounter = registry.counter("message.sent.attempt");
+        mesasageSentAttemptFailedCounter = registry.counter("message.sent.attempt.failed");
+        mesasageSentCounter = registry.counter("message.sent");
+        mesasageSentFailedCounter = registry.counter("message.sent.failed");
+        registry.start(Executors.defaultThreadFactory());
     }
 
-    public Counter evtReceived() {
-        return evtReceived;
+    public Counter getMesasageReadCounter() {
+        return mesasageReadCounter;
     }
 
-    public Counter evtAttempt() {
-        return evtAttempt;
+    public Counter getMesasageSentAttemptCounter() {
+        return mesasageSentAttemptCounter;
     }
 
-    public Counter evtSent() {
-        return evtSent;
+    public Counter getMesasageSentAttemptFailedCounter() {
+        return mesasageSentAttemptFailedCounter;
     }
 
-    public Counter evtFailed() {
-        return evtFailed;
+    public Counter getMesasageSentCounter() {
+        return mesasageSentCounter;
+    }
+
+    public Counter getMesasageSentFailedCounter() {
+        return mesasageSentFailedCounter;
+    }
+
+    public List<Counter> getAll() {
+        return Arrays.asList(mesasageReadCounter, mesasageSentAttemptCounter, mesasageSentAttemptFailedCounter, mesasageSentCounter, mesasageSentFailedCounter);
     }
 }

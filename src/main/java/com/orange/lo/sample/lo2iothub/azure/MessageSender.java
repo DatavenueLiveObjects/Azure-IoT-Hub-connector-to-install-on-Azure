@@ -30,9 +30,8 @@ public class MessageSender {
     }
 
     public void sendMessage(String msg, DeviceClient deviceClient) {
-        counterProvider.evtAttempt().increment();
-        com.microsoft.azure.sdk.iot.device.Message message =
-                new com.microsoft.azure.sdk.iot.device.Message(msg);
+        counterProvider.getMesasageSentAttemptCounter().increment();
+        com.microsoft.azure.sdk.iot.device.Message message = new com.microsoft.azure.sdk.iot.device.Message(msg);
         deviceClient.sendEventAsync(message, new EventCallback(), message);
     }
 
@@ -41,13 +40,13 @@ public class MessageSender {
         public void execute(IotHubStatusCode status, Object context) {
 
             switch (status) {
-                case OK:
-                case OK_EMPTY:
-                    counterProvider.evtSent().increment();
-                    break;
-                default:
-                    counterProvider.evtFailed().increment();
-                    break;
+            case OK:
+            case OK_EMPTY:
+                counterProvider.getMesasageSentCounter().increment();
+                break;
+            default:
+                counterProvider.getMesasageSentFailedCounter().increment();
+                break;
             }
 
             if (LOG.isDebugEnabled()) {

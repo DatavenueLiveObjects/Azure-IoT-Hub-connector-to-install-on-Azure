@@ -55,7 +55,7 @@ public class MessageHandler implements DataManagementFifoCallback {
     }
 
     private void handleDataMessage(String message) {
-        counterProvider.evtReceived().increment();
+        counterProvider.getMesasageReadCounter().increment();
         iotHubAdapter.sendMessage(message);
     }
 

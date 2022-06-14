@@ -19,6 +19,11 @@ import com.orange.lo.sample.lo2iothub.exceptions.InitializationException;
 import com.orange.lo.sample.lo2iothub.lo.LiveObjectsProperties;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
+import com.orange.lo.sample.lo2iothub.utils.Counters;
+import com.orange.lo.sdk.LOApiClient;
+import com.orange.lo.sdk.LOApiClientParameters;
+import com.orange.lo.sdk.rest.model.Device;
+import com.orange.lo.sdk.rest.model.Group;
 
 import java.io.File;
 import java.io.FileReader;
@@ -29,13 +34,6 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
-
-import com.orange.lo.sample.lo2iothub.utils.Counters;
-import com.orange.lo.sdk.LOApiClient;
-import com.orange.lo.sdk.LOApiClientParameters;
-import com.orange.lo.sdk.rest.model.Device;
-import com.orange.lo.sdk.rest.model.Group;
-import net.jodah.failsafe.RetryPolicy;
 
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
@@ -50,13 +48,15 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.client.HttpClientErrorException;
 
+import net.jodah.failsafe.RetryPolicy;
+
 @EnableIntegration
 @Configuration
 public class ApplicationConfig {
 
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-    private Counters counterProvider;
+    private Counters counters;
     private ApplicationProperties applicationProperties;
     private MessageSender messageSender;
     private ObjectMapper objectMapper;
@@ -64,7 +64,7 @@ public class ApplicationConfig {
     public ApplicationConfig(Counters counterProvider, MessageSender messageSender,
                              ApplicationProperties applicationProperties,
                              MappingJackson2HttpMessageConverter springJacksonConverter) {
-        this.counterProvider = counterProvider;
+        this.counters = counterProvider;
         this.messageSender = messageSender;
         this.applicationProperties = applicationProperties;
         this.objectMapper = springJacksonConverter.getObjectMapper();
@@ -146,7 +146,7 @@ public class ApplicationConfig {
                 .connectionTimeout(loProperties.getConnectionTimeout())
                 .mqttPersistenceDataDir(loProperties.getMqttPersistenceDir())
                 .topics(Arrays.asList(loDevicesTopic, loMessagesTopic))
-                .dataManagementMqttCallback(new MessageHandler(iotHubAdapter, counterProvider))
+                .dataManagementMqttCallback(new MessageHandler(iotHubAdapter, counters))
                 .connectorType(loProperties.getConnectorType())
                 .connectorVersion(getConnectorVersion())
                 .build();
@@ -175,11 +175,11 @@ public class ApplicationConfig {
         return e instanceof HttpClientErrorException
                 && ((HttpClientErrorException) e).getStatusCode().equals(HttpStatus.TOO_MANY_REQUESTS);
     }
-    
+
     private String getConnectorVersion() {
         MavenXpp3Reader reader = new MavenXpp3Reader();
         Model model = null;
-        try {           
+        try {
             if ((new File("pom.xml")).exists()) {
               model = reader.read(new FileReader("pom.xml"));
             } else {
