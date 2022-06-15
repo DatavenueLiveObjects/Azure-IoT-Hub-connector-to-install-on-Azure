@@ -26,12 +26,12 @@ import io.micrometer.core.instrument.step.StepMeterRegistry;
 import io.micrometer.core.instrument.step.StepRegistryConfig;
 
 @SpringBootApplication
-public class Application {
+public class ConnectorApplication {
 
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     public static void main(String[] args) {
-        SpringApplication.run(Application.class, args);
+        SpringApplication.run(ConnectorApplication.class, args);
     }
 
     @Bean

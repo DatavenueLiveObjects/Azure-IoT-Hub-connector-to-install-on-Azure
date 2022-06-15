@@ -166,7 +166,7 @@
 							</platforms>
 							<programs>
 								<program>
-									<mainClass>com.orange.lo.sample.lo2iothub.Application</mainClass>
+									<mainClass>com.orange.lo.sample.lo2iothub.ConnectorApplication</mainClass>
 									<id>app</id>
 								</program>
 							</programs>
