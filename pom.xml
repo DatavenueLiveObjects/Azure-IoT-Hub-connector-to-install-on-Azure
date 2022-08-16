@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>com.orange.lo.sample.lo2iot</groupId>
 	<artifactId>lo2iot</artifactId>
-	<version>1.7</version>
+	<version>1.8-SNAPSHOT</version>
 	<name>lo2iot</name>
 	<description>Connector between live object and azure IoT Hub</description>
 
@@ -120,7 +120,7 @@
 		<url>https://github.com/DatavenueLiveObjects/Azure-IoT-Hub-connector-to-install-on-Azure.git</url>
 		<connection>scm:git:${project.scm.url}</connection>
 		<developerConnection>scm:git:${project.scm.url}</developerConnection>
-		<tag>v1.7</tag>
+		<tag>v1.0</tag>
 	</scm>
 
 	<profiles>
