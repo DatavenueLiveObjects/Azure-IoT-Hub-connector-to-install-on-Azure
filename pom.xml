@@ -28,7 +28,7 @@
 		<dependency>
 			<groupId>com.github.DatavenueLiveObjects</groupId>
 			<artifactId>FIFO_SDK_LiveObjects</artifactId>
-			<version>v1.9</version>
+			<version>v1.12</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
