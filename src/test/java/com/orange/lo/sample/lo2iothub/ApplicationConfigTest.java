@@ -7,18 +7,19 @@
 
 package com.orange.lo.sample.lo2iothub;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import com.orange.lo.sample.lo2iothub.azure.MessageSender;
+import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.integration.dsl.context.IntegrationFlowContext;
 import org.springframework.scheduling.TaskScheduler;
-
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @ExtendWith(MockitoExtension.class)
 class ApplicationConfigTest {
@@ -31,13 +32,14 @@ class ApplicationConfigTest {
     private ApplicationProperties applicationProperties;
     @Mock
     private MappingJackson2HttpMessageConverter springJacksonConverter;
+    @Mock
+    private ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
 
     private ApplicationConfig applicationConfig;
 
     @BeforeEach
     void setUp() {
-        applicationConfig = new ApplicationConfig(counterProvider, messageSender,
-                applicationProperties, springJacksonConverter);
+        applicationConfig = new ApplicationConfig(counterProvider, messageSender, applicationProperties, springJacksonConverter, connectorHealthActuatorEndpoint);
     }
 
     @Test

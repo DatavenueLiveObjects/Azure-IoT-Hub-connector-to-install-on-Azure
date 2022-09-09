@@ -19,7 +19,9 @@ import com.orange.lo.sample.lo2iothub.exceptions.InitializationException;
 import com.orange.lo.sample.lo2iothub.lo.LiveObjectsProperties;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
+import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
+import com.orange.lo.sample.lo2iothub.utils.CountersActuatorEndpoint;
 import com.orange.lo.sdk.LOApiClient;
 import com.orange.lo.sdk.LOApiClientParameters;
 import com.orange.lo.sdk.rest.model.Device;
@@ -60,13 +62,16 @@ public class ApplicationConfig {
     private ApplicationProperties applicationProperties;
     private MessageSender messageSender;
     private ObjectMapper objectMapper;
+    private ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
 
     public ApplicationConfig(Counters counterProvider, MessageSender messageSender,
                              ApplicationProperties applicationProperties,
-                             MappingJackson2HttpMessageConverter springJacksonConverter) {
+                             MappingJackson2HttpMessageConverter springJacksonConverter,
+                             ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint) {
         this.counters = counterProvider;
         this.messageSender = messageSender;
         this.applicationProperties = applicationProperties;
+        this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
         this.objectMapper = springJacksonConverter.getObjectMapper();
     }
 
@@ -102,6 +107,7 @@ public class ApplicationConfig {
                     LOApiClientParameters loApiClientParameters = loApiClientParameters(liveObjectsProperties,
                             azureIotHubProperties, iotHubAdapter);
                     LOApiClient loApiClient = new LOApiClient(loApiClientParameters);
+                    connectorHealthActuatorEndpoint.addLoApiClient(loApiClient);
                     LoAdapter loAdapter = new LoAdapter(loApiClient, liveObjectsProperties.getPageSize(),
                             groupRetryPolicy, deviceRetryPolicy);
                     LoCommandSender loCommandSender = new LoCommandSender(loApiClient, objectMapper, commandRetryPolicy);
