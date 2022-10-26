@@ -19,12 +19,18 @@ import com.microsoft.azure.sdk.iot.service.exceptions.IotHubNotFoundException;
 import com.orange.lo.sample.lo2iothub.exceptions.IotDeviceProviderException;
 
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class IoTDeviceProvider {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private DeviceTwin deviceTwin;
     private RegistryManager registryManager;
@@ -69,7 +75,7 @@ public class IoTDeviceProvider {
         try {
             registryManager.removeDevice(deviceId);
         } catch (IotHubException | IOException e) {
-            throw new IotDeviceProviderException("Error while removing device", e);
+            LOG.error("Cannot remove device {}", deviceId);
         }
     }
 
