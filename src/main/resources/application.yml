@@ -8,7 +8,7 @@ tenant-list:
       qos: 1
       keep-alive-interval-seconds: 30
       page-size: 20
-      synchronization-device-interval: 10
+      synchronization-device-interval: 86400
       mqtt-persistence-dir: ${basedir:.}/temp/
 
     azure-iot-hub-list:
