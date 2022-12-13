@@ -50,7 +50,7 @@ public class ModifyAzureIotHubProperties {
     @Override
     public String toString() {
         return "AzureIotHubProperties{" +
-                "iotConnectionString='" + iotConnectionString + '\'' +
+                "iotConnectionString=***" +
                 ", iotHostName='" + iotHostName + '\'' +
                 ", loMessagesTopic='" + loMessagesTopic + '\'' +
                 ", loDevicesTopic='" + loDevicesTopic + '\'' +

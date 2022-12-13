@@ -14,8 +14,6 @@ public class ModifyLiveObjectsProperties {
 
     @Override
     public String toString() {
-        return "LiveObjectsProperties{" +
-                "loApiKey='" + loApiKey + '\'' +
-                '}';
+        return "LiveObjectsProperties{" + "loApiKey=***" + '}';
     }
 }
