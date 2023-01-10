@@ -22,7 +22,7 @@
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${LOG_PATH:-./logs}/lo-connector.%d{yyyy-MM-dd}.log</fileNamePattern>
-            <maxHistory>60</maxHistory>
+            <maxHistory>7</maxHistory>
         </rollingPolicy>
     </appender>
     <appender name="FILE_ALL" class="ch.qos.logback.core.rolling.RollingFileAppender">
@@ -32,7 +32,7 @@
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${LOG_PATH:-./logs}/lo-connector-all.%d{yyyy-MM-dd}.log</fileNamePattern>
-            <maxHistory>60</maxHistory>
+            <maxHistory>7</maxHistory>
         </rollingPolicy>
     </appender>
     <logger name="com.orange.lo.sample.lo2iothub" level="DEBUG" />
