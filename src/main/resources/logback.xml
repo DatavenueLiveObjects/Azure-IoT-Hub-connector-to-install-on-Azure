@@ -36,7 +36,7 @@
         </rollingPolicy>
     </appender>
     <logger name="com.orange.lo.sample.lo2iothub" level="DEBUG" />
-    <logger name="org.eclipse.paho.client.mqttv3"  level="INFO" />
+    <logger name="org.eclipse.paho.client.mqttv3"  level="FINE" />
     <logger name="com.microsoft.azure" level="ERROR" />
     
     <root level="INFO">
