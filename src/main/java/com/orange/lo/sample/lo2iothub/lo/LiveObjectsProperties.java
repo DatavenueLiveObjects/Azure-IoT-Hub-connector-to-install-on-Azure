@@ -20,6 +20,7 @@ public class LiveObjectsProperties {
     private int keepAliveIntervalSeconds;
     private int pageSize;
     private int synchronizationDeviceInterval;
+    private boolean deviceSynchronization;
 
     public String getConnectorType() {
         return CONNECTOR_TYPE;
@@ -95,5 +96,13 @@ public class LiveObjectsProperties {
 
     public void setSynchronizationDeviceInterval(int synchronizationDeviceInterval) {
         this.synchronizationDeviceInterval = synchronizationDeviceInterval;
+    }
+
+    public boolean isDeviceSynchronization() {
+        return deviceSynchronization;
+    }
+
+    public void setDeviceSynchronization(boolean deviceSynchronization) {
+        this.deviceSynchronization = deviceSynchronization;
     }
 }

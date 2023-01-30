@@ -19,6 +19,7 @@ import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.microsoft.azure.sdk.iot.device.transport.RetryDecision;
 import com.microsoft.azure.sdk.iot.service.Device;
 import com.orange.lo.sample.lo2iothub.exceptions.CommandException;
+import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 
 import java.io.IOException;
@@ -45,14 +46,15 @@ public class IotHubAdapter {
     private IotClientCache iotClientCache;
     private AzureIotHubProperties iotHubProperties;
     private ExecutorService executorService;
+    private boolean deviceSynchronization;
 
-    public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider,
-                         MessageSender messageSender, IotClientCache iotClientCache,
-                         AzureIotHubProperties iotHubProperties) {
+    public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider, MessageSender messageSender,
+            IotClientCache iotClientCache, AzureIotHubProperties iotHubProperties, boolean deviceSynchronization) {
         this.ioTDeviceProvider = ioTDeviceProvider;
         this.messageSender = messageSender;
         this.iotClientCache = iotClientCache;
         this.iotHubProperties = iotHubProperties;
+        this.deviceSynchronization = deviceSynchronization;
         this.executorService = Executors.newCachedThreadPool();
     }
 
@@ -86,8 +88,12 @@ public class IotHubAdapter {
     }
 
     public void deleteDevice(String deviceId) {
-        iotClientCache.remove(deviceId);
-        ioTDeviceProvider.deleteDevice(deviceId);
+        if (deviceSynchronization) {
+            iotClientCache.remove(deviceId);
+            ioTDeviceProvider.deleteDevice(deviceId);
+        } else {
+            throw new DeviceSynchronizationException(deviceId);
+        }
     }
 
     public DeviceClient createDeviceClient(String deviceId) {
@@ -95,13 +101,17 @@ public class IotHubAdapter {
             Device device = ioTDeviceProvider.getDevice(deviceId);
             // no device in iot hub
             if (device == null) {
-                device = ioTDeviceProvider.createDevice(deviceId);
-                DeviceClient deviceClient = iotClientCache.get(deviceId);
-                // make sure that if device client exists we have to close it
-                if (deviceClient != null) {
-                    iotClientCache.remove(deviceId);
+                if (deviceSynchronization) {
+                    device = ioTDeviceProvider.createDevice(deviceId);
+                    DeviceClient deviceClient = iotClientCache.get(deviceId);
+                    // make sure that if device client exists we have to close it
+                    if (deviceClient != null) {
+                        iotClientCache.remove(deviceId);
+                    }
+                    return createDeviceClient(device);
+                } else {
+                    throw new DeviceSynchronizationException(deviceId);
                 }
-                return createDeviceClient(device);
                 // device exists but device client doesn't
             } else if (iotClientCache.get(deviceId) == null) {
                 return createDeviceClient(device);
@@ -123,7 +133,7 @@ public class IotHubAdapter {
                 deviceClient.registerConnectionStatusChangeCallback(new ConnectionStatusChangeCallback(), deviceId);
                 deviceClient.open();
                 iotClientCache.add(deviceId, deviceClient);
-                if(LOG.isInfoEnabled()) {
+                if (LOG.isInfoEnabled()) {
                     String cleanDeviceId = StringEscapeUtils.escapeHtml4(deviceId);
                     LOG.info("Device client created for {}", cleanDeviceId);
                 }
@@ -148,7 +158,7 @@ public class IotHubAdapter {
 
         @Override
         public void execute(IotHubConnectionStatus status, IotHubConnectionStatusChangeReason statusChangeReason,
-                            Throwable throwable, Object callbackContext) {
+                Throwable throwable, Object callbackContext) {
 
             if (IotHubConnectionStatus.DISCONNECTED == status) {
                 String deviceId = callbackContext.toString();
@@ -169,8 +179,8 @@ public class IotHubAdapter {
         public IotHubMessageResult execute(Message msg, Object context) {
             String deviceId = context.toString();
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Received command for device: {} with content {}", deviceId, new String(msg.getBytes(),
-                        Message.DEFAULT_IOTHUB_MESSAGE_CHARSET));
+                LOG.debug("Received command for device: {} with content {}", deviceId,
+                        new String(msg.getBytes(), Message.DEFAULT_IOTHUB_MESSAGE_CHARSET));
                 for (MessageProperty messageProperty : msg.getProperties()) {
                     LOG.debug("{} : {}", messageProperty.getName(), messageProperty.getValue());
                 }

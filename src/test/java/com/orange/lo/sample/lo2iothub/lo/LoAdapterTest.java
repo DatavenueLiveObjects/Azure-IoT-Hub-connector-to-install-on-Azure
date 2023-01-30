@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -148,7 +147,7 @@ class LoAdapterTest {
     @ParameterizedTest
     @MethodSource("provideTestData")
     void shouldAddMonitoringPartForProdEnvironment(String group, int numberOfGroupApiCalls, int numberOfInventoryApiCalls) {
-        List<Device> devices = loAdapter.getDevices(group);
+        loAdapter.getDevices(group);
 
         verify(groups, times(numberOfGroupApiCalls)).getGroups(any(GetGroupsFilter.class));
         verify(inventory, times(numberOfInventoryApiCalls)).getDevices(any(GetDevicesFilter.class));

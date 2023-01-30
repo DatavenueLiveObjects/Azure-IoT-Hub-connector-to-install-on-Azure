@@ -8,6 +8,7 @@ tenant-list:
       qos: 1
       keep-alive-interval-seconds: 30
       page-size: 20
+      device-synchronization: true
       synchronization-device-interval: 86400
       mqtt-persistence-dir: ${basedir:.}/temp/
 
@@ -38,12 +39,8 @@ tenant-list:
 
 azure:
   application-insights:
+    enabled: true
     instrumentation-key: YOUR_INSTMENTATION_KEY
-    channel:
-      in-process:
-        developer-mode: true
-        max-telemetry-buffer-capacity: 500
-        flush-interval-in-seconds: 5
 
 management:
   endpoints:

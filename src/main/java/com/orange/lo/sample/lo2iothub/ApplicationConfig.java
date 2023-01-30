@@ -8,6 +8,7 @@
 package com.orange.lo.sample.lo2iothub;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Lists;
 import com.microsoft.azure.sdk.iot.service.RegistryManager;
 import com.microsoft.azure.sdk.iot.service.devicetwin.DeviceTwin;
 import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
@@ -21,7 +22,6 @@ import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
-import com.orange.lo.sample.lo2iothub.utils.CountersActuatorEndpoint;
 import com.orange.lo.sdk.LOApiClient;
 import com.orange.lo.sdk.LOApiClientParameters;
 import com.orange.lo.sdk.rest.model.Device;
@@ -34,7 +34,6 @@ import java.io.InputStreamReader;
 import java.lang.invoke.MethodHandles;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.maven.model.Model;
@@ -65,9 +64,8 @@ public class ApplicationConfig {
     private ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
 
     public ApplicationConfig(Counters counterProvider, MessageSender messageSender,
-                             ApplicationProperties applicationProperties,
-                             MappingJackson2HttpMessageConverter springJacksonConverter,
-                             ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint) {
+            ApplicationProperties applicationProperties, MappingJackson2HttpMessageConverter springJacksonConverter,
+            ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint) {
         this.counters = counterProvider;
         this.messageSender = messageSender;
         this.applicationProperties = applicationProperties;
@@ -98,28 +96,32 @@ public class ApplicationConfig {
                     IotClientCache iotClientCache = new IotClientCache();
 
                     IotHubAdapter iotHubAdapter = new IotHubAdapter(
-                            ioTDeviceProvider,
-                            messageSender,
+                            ioTDeviceProvider, 
+                            messageSender, 
                             iotClientCache,
-                            azureIotHubProperties
+                            azureIotHubProperties, 
+                            liveObjectsProperties.isDeviceSynchronization()
                     );
 
                     LOApiClientParameters loApiClientParameters = loApiClientParameters(liveObjectsProperties,
-                            azureIotHubProperties, iotHubAdapter);
+                            azureIotHubProperties, iotHubAdapter, liveObjectsProperties.isDeviceSynchronization());
                     LOApiClient loApiClient = new LOApiClient(loApiClientParameters);
                     connectorHealthActuatorEndpoint.addLoApiClient(loApiClient);
                     LoAdapter loAdapter = new LoAdapter(loApiClient, liveObjectsProperties.getPageSize(),
                             groupRetryPolicy, deviceRetryPolicy);
-                    LoCommandSender loCommandSender = new LoCommandSender(loApiClient, objectMapper, commandRetryPolicy);
+                    LoCommandSender loCommandSender = new LoCommandSender(loApiClient, objectMapper,
+                            commandRetryPolicy);
                     iotHubAdapter.setLoCommandSender(loCommandSender);
 
-                    DeviceSynchronizationTask deviceSynchronizationTask = new DeviceSynchronizationTask(iotHubAdapter,
-                            loAdapter, azureIotHubProperties);
-                    int synchronizationDeviceInterval = liveObjectsProperties.getSynchronizationDeviceInterval();
-                    Duration period = Duration.ofSeconds(synchronizationDeviceInterval);
-                    taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, period);
-                    loAdapter.startListeningForMessages();
+                    if (liveObjectsProperties.isDeviceSynchronization()) {
+                        DeviceSynchronizationTask deviceSynchronizationTask = new DeviceSynchronizationTask(
+                                iotHubAdapter, loAdapter, azureIotHubProperties);
+                        int synchronizationDeviceInterval = liveObjectsProperties.getSynchronizationDeviceInterval();
+                        Duration period = Duration.ofSeconds(synchronizationDeviceInterval);
+                        taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, period);
+                    }
 
+                    loAdapter.startListeningForMessages();
                 } catch (IOException e) {
                     throw new InitializationException(e);
                 }
@@ -138,11 +140,12 @@ public class ApplicationConfig {
     }
 
     private LOApiClientParameters loApiClientParameters(LiveObjectsProperties loProperties,
-                                                        AzureIotHubProperties azureIotHubProperties,
-                                                        IotHubAdapter iotHubAdapter) {
-        String loDevicesTopic = azureIotHubProperties.getLoDevicesTopic();
-        String loMessagesTopic = azureIotHubProperties.getLoMessagesTopic();
+            AzureIotHubProperties azureIotHubProperties, IotHubAdapter iotHubAdapter, boolean deviceSynchronization) {
 
+        List<String> topics = Lists.newArrayList(azureIotHubProperties.getLoMessagesTopic());
+        if (loProperties.isDeviceSynchronization()) {
+            topics.add(azureIotHubProperties.getLoDevicesTopic());
+        }
         return LOApiClientParameters.builder()
                 .hostname(loProperties.getHostname())
                 .apiKey(loProperties.getApiKey())
@@ -151,7 +154,7 @@ public class ApplicationConfig {
                 .keepAliveIntervalSeconds(loProperties.getKeepAliveIntervalSeconds())
                 .connectionTimeout(loProperties.getConnectionTimeout())
                 .mqttPersistenceDataDir(loProperties.getMqttPersistenceDir())
-                .topics(Arrays.asList(loDevicesTopic, loMessagesTopic))
+                .topics(topics)
                 .dataManagementMqttCallback(new MessageHandler(iotHubAdapter, counters))
                 .connectorType(loProperties.getConnectorType())
                 .connectorVersion(getConnectorVersion())
@@ -174,7 +177,8 @@ public class ApplicationConfig {
         return retryPolicy.handleIf(this::isTooManyRequestsException)
                 .withMaxAttempts(-1)
                 .withBackoff(1, 60, ChronoUnit.SECONDS)
-                .withMaxDuration(Duration.ofHours(1));
+                .withMaxDuration(Duration.ofHours(1)
+        );
     }
 
     private boolean isTooManyRequestsException(Throwable e) {
@@ -187,15 +191,10 @@ public class ApplicationConfig {
         Model model = null;
         try {
             if ((new File("pom.xml")).exists()) {
-              model = reader.read(new FileReader("pom.xml"));
+                model = reader.read(new FileReader("pom.xml"));
             } else {
-              model = reader.read(
-                new InputStreamReader(
-                        ApplicationConfig.class.getResourceAsStream(
-                    "/META-INF/maven/com.orange.lo.sample.lo2iot/lo2iot/pom.xml"
-                  )
-                )
-              );
+                model = reader.read(new InputStreamReader(ApplicationConfig.class
+                        .getResourceAsStream("/META-INF/maven/com.orange.lo.sample.lo2iot/lo2iot/pom.xml")));
             }
             return model.getVersion().replace(".", "_");
         } catch (Exception e) {

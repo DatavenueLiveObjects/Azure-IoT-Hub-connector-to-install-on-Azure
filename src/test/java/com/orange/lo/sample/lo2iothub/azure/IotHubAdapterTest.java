@@ -7,24 +7,27 @@
 
 package com.orange.lo.sample.lo2iothub.azure;
 
-import com.microsoft.azure.sdk.iot.device.DeviceClient;
-import com.microsoft.azure.sdk.iot.device.IotHubClientProtocol;
-import com.microsoft.azure.sdk.iot.service.Device;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import com.microsoft.azure.sdk.iot.device.DeviceClient;
+import com.microsoft.azure.sdk.iot.device.IotHubClientProtocol;
+import com.microsoft.azure.sdk.iot.service.Device;
+import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
+
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class IotHubAdapterTest {
@@ -47,7 +50,7 @@ class IotHubAdapterTest {
 
     @BeforeEach
     void setUp() throws URISyntaxException {
-        iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, messageSender, iotClientCache, iotHubProperties);
+        iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, messageSender, iotClientCache, iotHubProperties, true);
         deviceClient = new DeviceClient(CONNECTION_STRING, IotHubClientProtocol.MQTT);
     }
 
@@ -79,6 +82,16 @@ class IotHubAdapterTest {
         assertEquals(deviceClient, dc);
         verify(ioTDeviceProvider, times(1)).getDevice(DEVICE_ID);
         verify(iotClientCache, times(2)).get(DEVICE_ID);
+    }
+
+    @Test
+    void shouldThrowDeviceSynchronizationExceptionDuringCreatingDeviceClientWhenSynchronizationIsDisabled() {
+        IotHubAdapter iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, messageSender, iotClientCache, iotHubProperties, false);
+        when(ioTDeviceProvider.getDevice(DEVICE_ID)).thenReturn(null);
+
+        Assertions.assertThrows(DeviceSynchronizationException.class, () -> {
+            iotHubAdapter.createDeviceClient(DEVICE_ID);            
+        }, "DeviceSynchronizationException");
     }
 
     @Test
