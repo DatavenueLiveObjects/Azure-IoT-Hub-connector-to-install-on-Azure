@@ -53,6 +53,10 @@ management:
   health:
     defaults:
       enabled: false
+  metrics:
+    export:
+      azuremonitor:
+        enabled: true    
 
 spring:
   application:

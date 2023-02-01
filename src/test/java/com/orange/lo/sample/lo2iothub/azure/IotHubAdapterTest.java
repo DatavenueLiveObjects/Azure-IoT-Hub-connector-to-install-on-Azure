@@ -15,7 +15,7 @@ import static org.mockito.Mockito.when;
 
 import com.microsoft.azure.sdk.iot.device.DeviceClient;
 import com.microsoft.azure.sdk.iot.device.IotHubClientProtocol;
-import com.microsoft.azure.sdk.iot.service.Device;
+import com.microsoft.azure.sdk.iot.service.registry.Device;
 import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
 
 import java.net.URISyntaxException;

@@ -8,8 +8,9 @@
 package com.orange.lo.sample.lo2iothub.azure;
 
 import com.microsoft.azure.sdk.iot.device.DeviceClient;
-import com.microsoft.azure.sdk.iot.device.IotHubEventCallback;
-import com.microsoft.azure.sdk.iot.device.IotHubStatusCode;
+import com.microsoft.azure.sdk.iot.device.Message;
+import com.microsoft.azure.sdk.iot.device.MessageSentCallback;
+import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
 
 import java.lang.invoke.MethodHandles;
@@ -32,16 +33,15 @@ public class MessageSender {
     public void sendMessage(String msg, DeviceClient deviceClient) {
         counterProvider.getMesasageSentAttemptCounter().increment();
         com.microsoft.azure.sdk.iot.device.Message message = new com.microsoft.azure.sdk.iot.device.Message(msg);
-        deviceClient.sendEventAsync(message, new EventCallback(), message);
+        deviceClient.sendEventAsync(message, new MessageSentCallbackImpl(), message);
     }
 
-    protected class EventCallback implements IotHubEventCallback {
-        @Override
-        public void execute(IotHubStatusCode status, Object context) {
+    protected class MessageSentCallbackImpl implements MessageSentCallback {
 
-            switch (status) {
+        @Override
+        public void onMessageSent(Message sentMessage, IotHubClientException clientException, Object context) {
+            switch (clientException.getStatusCode()) {
             case OK:
-            case OK_EMPTY:
                 counterProvider.getMesasageSentCounter().increment();
                 break;
             default:
@@ -50,8 +50,8 @@ public class MessageSender {
             }
 
             if (LOG.isDebugEnabled()) {
-                com.microsoft.azure.sdk.iot.device.Message msg = (com.microsoft.azure.sdk.iot.device.Message) context;
-                LOG.debug("IoT Hub responded to message {} with status {}", msg.getMessageId(), status.name());
+                LOG.debug("IoT Hub responded to message {} with status {}", sentMessage.getMessageId(),
+                        clientException.getStatusCode().name());
             }
         }
     }

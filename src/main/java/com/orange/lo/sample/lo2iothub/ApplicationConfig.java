@@ -9,8 +9,8 @@ package com.orange.lo.sample.lo2iothub;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
-import com.microsoft.azure.sdk.iot.service.RegistryManager;
-import com.microsoft.azure.sdk.iot.service.devicetwin.DeviceTwin;
+import com.microsoft.azure.sdk.iot.service.registry.RegistryClient;
+import com.microsoft.azure.sdk.iot.service.twin.TwinClient;
 import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
 import com.orange.lo.sample.lo2iothub.azure.IoTDeviceProvider;
 import com.orange.lo.sample.lo2iothub.azure.IotClientCache;
@@ -132,11 +132,11 @@ public class ApplicationConfig {
 
     private IoTDeviceProvider createIotDeviceProvider(AzureIotHubProperties azureIotHubProperties) throws IOException {
         String iotConnectionString = azureIotHubProperties.getIotConnectionString();
-        DeviceTwin deviceTwin = DeviceTwin.createFromConnectionString(iotConnectionString);
-        RegistryManager registryManager = RegistryManager.createFromConnectionString(iotConnectionString);
+        TwinClient twinClient = new TwinClient(iotConnectionString);
+        RegistryClient registryClient = new RegistryClient(iotConnectionString);
         String tagPlatformKey = azureIotHubProperties.getTagPlatformKey();
         String tagPlatformValue = azureIotHubProperties.getTagPlatformValue();
-        return new IoTDeviceProvider(deviceTwin, registryManager, tagPlatformKey, tagPlatformValue);
+        return new IoTDeviceProvider(twinClient, registryClient, tagPlatformKey, tagPlatformValue);
     }
 
     private LOApiClientParameters loApiClientParameters(LiveObjectsProperties loProperties,
