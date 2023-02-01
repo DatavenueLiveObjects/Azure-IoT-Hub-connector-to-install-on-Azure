@@ -7,23 +7,23 @@
 
 package com.orange.lo.sample.lo2iothub.azure;
 
+import com.microsoft.azure.sdk.iot.device.ConnectionStatusChangeContext;
 import com.microsoft.azure.sdk.iot.device.DeviceClient;
 import com.microsoft.azure.sdk.iot.device.IotHubClientProtocol;
 import com.microsoft.azure.sdk.iot.device.IotHubConnectionStatusChangeCallback;
-import com.microsoft.azure.sdk.iot.device.IotHubConnectionStatusChangeReason;
 import com.microsoft.azure.sdk.iot.device.IotHubMessageResult;
 import com.microsoft.azure.sdk.iot.device.Message;
 import com.microsoft.azure.sdk.iot.device.MessageCallback;
 import com.microsoft.azure.sdk.iot.device.MessageProperty;
+import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
 import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.microsoft.azure.sdk.iot.device.transport.RetryDecision;
-import com.microsoft.azure.sdk.iot.service.Device;
+import com.microsoft.azure.sdk.iot.service.registry.Device;
 import com.orange.lo.sample.lo2iothub.exceptions.CommandException;
+import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 
-import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.net.URISyntaxException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,14 +45,15 @@ public class IotHubAdapter {
     private IotClientCache iotClientCache;
     private AzureIotHubProperties iotHubProperties;
     private ExecutorService executorService;
+    private boolean deviceSynchronization;
 
-    public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider,
-                         MessageSender messageSender, IotClientCache iotClientCache,
-                         AzureIotHubProperties iotHubProperties) {
+    public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider, MessageSender messageSender,
+            IotClientCache iotClientCache, AzureIotHubProperties iotHubProperties, boolean deviceSynchronization) {
         this.ioTDeviceProvider = ioTDeviceProvider;
         this.messageSender = messageSender;
         this.iotClientCache = iotClientCache;
         this.iotHubProperties = iotHubProperties;
+        this.deviceSynchronization = deviceSynchronization;
         this.executorService = Executors.newCachedThreadPool();
     }
 
@@ -86,8 +87,12 @@ public class IotHubAdapter {
     }
 
     public void deleteDevice(String deviceId) {
-        iotClientCache.remove(deviceId);
-        ioTDeviceProvider.deleteDevice(deviceId);
+        if (deviceSynchronization) {
+            iotClientCache.remove(deviceId);
+            ioTDeviceProvider.deleteDevice(deviceId);
+        } else {
+            throw new DeviceSynchronizationException(deviceId);
+        }
     }
 
     public DeviceClient createDeviceClient(String deviceId) {
@@ -95,13 +100,17 @@ public class IotHubAdapter {
             Device device = ioTDeviceProvider.getDevice(deviceId);
             // no device in iot hub
             if (device == null) {
-                device = ioTDeviceProvider.createDevice(deviceId);
-                DeviceClient deviceClient = iotClientCache.get(deviceId);
-                // make sure that if device client exists we have to close it
-                if (deviceClient != null) {
-                    iotClientCache.remove(deviceId);
+                if (deviceSynchronization) {
+                    device = ioTDeviceProvider.createDevice(deviceId);
+                    DeviceClient deviceClient = iotClientCache.get(deviceId);
+                    // make sure that if device client exists we have to close it
+                    if (deviceClient != null) {
+                        iotClientCache.remove(deviceId);
+                    }
+                    return createDeviceClient(device);
+                } else {
+                    throw new DeviceSynchronizationException(deviceId);
                 }
-                return createDeviceClient(device);
                 // device exists but device client doesn't
             } else if (iotClientCache.get(deviceId) == null) {
                 return createDeviceClient(device);
@@ -120,15 +129,15 @@ public class IotHubAdapter {
                 deviceClient.setMessageCallback(new MessageCallbackMqtt(), deviceId);
                 deviceClient.setOperationTimeout(iotHubProperties.getDeviceClientConnectionTimeout());
                 deviceClient.setRetryPolicy((currentRetryCount, lastException) -> new RetryDecision(false, 0));
-                deviceClient.registerConnectionStatusChangeCallback(new ConnectionStatusChangeCallback(), deviceId);
-                deviceClient.open();
+                deviceClient.setConnectionStatusChangeCallback(new ConnectionStatusChangeCallback(), deviceId);
+                deviceClient.open(false);
                 iotClientCache.add(deviceId, deviceClient);
-                if(LOG.isInfoEnabled()) {
+                if (LOG.isInfoEnabled()) {
                     String cleanDeviceId = StringEscapeUtils.escapeHtml4(deviceId);
                     LOG.info("Device client created for {}", cleanDeviceId);
                 }
                 return deviceClient;
-            } catch (URISyntaxException | IOException e) {
+            } catch (IotHubClientException e) {
                 String cleanDeviceId = StringEscapeUtils.escapeHtml4(deviceId);
                 LOG.error("Error while creating device client for " + cleanDeviceId, e);
                 return null;
@@ -147,11 +156,9 @@ public class IotHubAdapter {
     protected class ConnectionStatusChangeCallback implements IotHubConnectionStatusChangeCallback {
 
         @Override
-        public void execute(IotHubConnectionStatus status, IotHubConnectionStatusChangeReason statusChangeReason,
-                            Throwable throwable, Object callbackContext) {
-
-            if (IotHubConnectionStatus.DISCONNECTED == status) {
-                String deviceId = callbackContext.toString();
+        public void onStatusChanged(ConnectionStatusChangeContext connectionStatusChangeContext) {
+            if (IotHubConnectionStatus.DISCONNECTED == connectionStatusChangeContext.getNewStatus()) {
+                String deviceId = connectionStatusChangeContext.getCallbackContext().toString();
                 LOG.debug("Device client disconnected for {}, trying to recreate ...", deviceId);
                 iotClientCache.remove(deviceId);
                 try {
@@ -160,23 +167,24 @@ public class IotHubAdapter {
                     LOG.error("Cannot create device client", e);
                 }
             }
+
         }
     }
 
     protected class MessageCallbackMqtt implements MessageCallback {
 
         @Override
-        public IotHubMessageResult execute(Message msg, Object context) {
+        public IotHubMessageResult onCloudToDeviceMessageReceived(Message message, Object context) {
             String deviceId = context.toString();
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Received command for device: {} with content {}", deviceId, new String(msg.getBytes(),
-                        Message.DEFAULT_IOTHUB_MESSAGE_CHARSET));
-                for (MessageProperty messageProperty : msg.getProperties()) {
+                LOG.debug("Received command for device: {} with content {}", deviceId,
+                        new String(message.getBytes(), Message.DEFAULT_IOTHUB_MESSAGE_CHARSET));
+                for (MessageProperty messageProperty : message.getProperties()) {
                     LOG.debug("{} : {}", messageProperty.getName(), messageProperty.getValue());
                 }
             }
             try {
-                loCommandSender.send(deviceId, new String(msg.getBytes()));
+                loCommandSender.send(deviceId, new String(message.getBytes()));
                 return IotHubMessageResult.COMPLETE;
             } catch (CommandException e) {
                 LOG.error("Cannot send command", e);
