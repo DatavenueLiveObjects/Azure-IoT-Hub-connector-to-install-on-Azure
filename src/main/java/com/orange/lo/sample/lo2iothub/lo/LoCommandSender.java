@@ -34,7 +34,7 @@ public class LoCommandSender {
         Failsafe.with(objectFallback, commandRetryPolicy)
                 .run(() -> {
                     CommandAddRequest commandAddRequest = objectMapper.readValue(command, CommandAddRequest.class);
-
+                    System.out.println("//////////////////////// " + deviceId + " ////////// " + command + " ////////// " + commandAddRequest);
                     DeviceManagement deviceManagement = loApiClient.getDeviceManagement();
                     Commands commands = deviceManagement.getCommands();
                     commands.addCommand(deviceId, commandAddRequest);

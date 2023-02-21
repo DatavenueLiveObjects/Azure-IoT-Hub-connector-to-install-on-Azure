@@ -40,19 +40,24 @@ public class MessageSender {
 
         @Override
         public void onMessageSent(Message sentMessage, IotHubClientException clientException, Object context) {
-            switch (clientException.getStatusCode()) {
-            case OK:
-                counterProvider.getMesasageSentCounter().increment();
-                break;
-            default:
-                counterProvider.getMesasageSentFailedCounter().increment();
-                break;
-            }
-
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("IoT Hub responded to message {} with status {}", sentMessage.getMessageId(),
-                        clientException.getStatusCode().name());
-            }
+            System.out.println("****************************");
+            System.out.println(sentMessage);
+            System.out.println(clientException);
+            System.out.println(context);
+            System.out.println("****************************");
+//            switch (clientException.getStatusCode()) {
+//            case OK:
+//                counterProvider.getMesasageSentCounter().increment();
+//                break;
+//            default:
+//                counterProvider.getMesasageSentFailedCounter().increment();
+//                break;
+//            }
+//
+//            if (LOG.isDebugEnabled()) {
+//                LOG.debug("IoT Hub responded to message {} with status {}", sentMessage.getMessageId(),
+//                        clientException.getStatusCode().name());
+//            }
         }
     }
 }
