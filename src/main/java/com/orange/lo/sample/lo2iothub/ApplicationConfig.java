@@ -9,13 +9,18 @@ package com.orange.lo.sample.lo2iothub;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
+import com.microsoft.azure.sdk.iot.device.IotHubClientProtocol;
+import com.microsoft.azure.sdk.iot.device.MultiplexingClient;
+import com.microsoft.azure.sdk.iot.device.MultiplexingClientOptions;
+import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
 import com.microsoft.azure.sdk.iot.service.registry.RegistryClient;
 import com.microsoft.azure.sdk.iot.service.twin.TwinClient;
 import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
+import com.orange.lo.sample.lo2iothub.azure.DeviceClientManager;
 import com.orange.lo.sample.lo2iothub.azure.IoTDeviceProvider;
-import com.orange.lo.sample.lo2iothub.azure.IotClientCache;
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.azure.MessageSender;
+import com.orange.lo.sample.lo2iothub.azure.MultiplexingClientManager;
 import com.orange.lo.sample.lo2iothub.exceptions.InitializationException;
 import com.orange.lo.sample.lo2iothub.lo.LiveObjectsProperties;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
@@ -34,6 +39,7 @@ import java.io.InputStreamReader;
 import java.lang.invoke.MethodHandles;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
 
 import org.apache.maven.model.Model;
@@ -85,6 +91,8 @@ public class ApplicationConfig {
         RetryPolicy<List<Group>> groupRetryPolicy = restGroupRetryPolicy();
         RetryPolicy<List<Device>> deviceRetryPolicy = restDeviceRetryPolicy();
 
+        messageSender.setMessageRetryPolicy(messageRetryPolicy());
+
         applicationProperties.getTenantList().forEach(tenantProperties -> {
             LiveObjectsProperties liveObjectsProperties = tenantProperties.getLiveObjectsProperties();
             List<AzureIotHubProperties> azureIotHubList = tenantProperties.getAzureIotHubList();
@@ -93,13 +101,15 @@ public class ApplicationConfig {
                 try {
                     LOG.debug("Initializing for {} ", azureIotHubProperties.getIotHostName());
                     IoTDeviceProvider ioTDeviceProvider = createIotDeviceProvider(azureIotHubProperties);
-                    IotClientCache iotClientCache = new IotClientCache();
+                    MultiplexingClientManager multiplexingClientManager = createMultiplexingClientManager(
+                            azureIotHubProperties.getIotHostName());
 
                     IotHubAdapter iotHubAdapter = new IotHubAdapter(
                             ioTDeviceProvider, 
                             messageSender, 
-                            iotClientCache,
-                            azureIotHubProperties, 
+                            azureIotHubProperties,
+                            multiplexingClientManager,
+                            new HashMap<String, DeviceClientManager>(),
                             liveObjectsProperties.isDeviceSynchronization()
                     );
 
@@ -122,7 +132,7 @@ public class ApplicationConfig {
                     }
 
                     loAdapter.startListeningForMessages();
-                } catch (IOException e) {
+                } catch (IOException | IotHubClientException e) {
                     throw new InitializationException(e);
                 }
             });
@@ -137,6 +147,14 @@ public class ApplicationConfig {
         String tagPlatformKey = azureIotHubProperties.getTagPlatformKey();
         String tagPlatformValue = azureIotHubProperties.getTagPlatformValue();
         return new IoTDeviceProvider(twinClient, registryClient, tagPlatformKey, tagPlatformValue);
+    }
+    
+    private MultiplexingClientManager createMultiplexingClientManager(String host) throws IotHubClientException {
+        MultiplexingClientOptions options = MultiplexingClientOptions.builder().build();
+        final MultiplexingClient multiplexingClient = new MultiplexingClient(host, IotHubClientProtocol.AMQPS, options);
+        MultiplexingClientManager multiplexingClientManager = new MultiplexingClientManager(multiplexingClient, "MultiplexingClient");
+        multiplexingClientManager.open();
+        return multiplexingClientManager;
     }
 
     private LOApiClientParameters loApiClientParameters(LiveObjectsProperties loProperties,
@@ -161,6 +179,13 @@ public class ApplicationConfig {
                 .build();
     }
 
+    public RetryPolicy<Void> messageRetryPolicy() {
+        return new RetryPolicy<Void>().handleIf(e -> e instanceof IllegalStateException)
+                .withMaxAttempts(-1)
+                .withBackoff(1, 60, ChronoUnit.SECONDS)
+                .withMaxDuration(Duration.ofHours(1));
+    }
+    
     public RetryPolicy<Void> restCommandRetryPolicy() {
         return configureRetryPolicy(new RetryPolicy<>());
     }

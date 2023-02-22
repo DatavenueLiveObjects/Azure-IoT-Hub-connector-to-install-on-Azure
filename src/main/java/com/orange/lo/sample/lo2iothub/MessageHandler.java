@@ -57,7 +57,10 @@ public class MessageHandler implements DataManagementFifoCallback {
 
     private void handleDataMessage(String message) {
         counterProvider.getMesasageReadCounter().increment();
-        iotHubAdapter.sendMessage(message);
+        Optional<String> sourceDeviceId = getSourceDeviceId(message);
+        if (sourceDeviceId.isPresent()) {
+            iotHubAdapter.sendMessage(sourceDeviceId.get(), message);
+        }
     }
 
     private void handleDeviceCreationEvent(String message) {
@@ -70,6 +73,15 @@ public class MessageHandler implements DataManagementFifoCallback {
         deviceId.ifPresent(iotHubAdapter::deleteDevice);
     }
 
+    private static Optional<String> getSourceDeviceId(String msg) {
+        String id = null;
+        try {
+            id = new JSONObject(msg).getJSONObject("metadata").getString("source");
+        } catch (JSONException e) {
+            LOG.error("No device id in source");
+        }
+        return Optional.ofNullable(id);
+    }
     private static Optional<String> getDeviceId(String msg) {
         String id = null;
         try {
