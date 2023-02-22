@@ -8,16 +8,25 @@
 package com.orange.lo.sample.lo2iothub.lo;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.microsoft.azure.sdk.iot.device.IotHubMessageResult;
 import com.orange.lo.sample.lo2iothub.exceptions.CommandException;
 import com.orange.lo.sdk.LOApiClient;
 import com.orange.lo.sdk.rest.devicemanagement.Commands;
 import com.orange.lo.sdk.rest.devicemanagement.DeviceManagement;
 import com.orange.lo.sdk.rest.model.CommandAddRequest;
+
+import java.lang.invoke.MethodHandles;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.Fallback;
 import net.jodah.failsafe.RetryPolicy;
 
 public class LoCommandSender {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private final LOApiClient loApiClient;
     private final ObjectMapper objectMapper;
@@ -29,15 +38,19 @@ public class LoCommandSender {
         this.commandRetryPolicy = commandRetryPolicy;
     }
 
-    public void send(String deviceId, String command) {
-        Fallback<Void> objectFallback = Fallback.ofException(e -> new CommandException(e.getLastFailure()));
-        Failsafe.with(objectFallback, commandRetryPolicy)
-                .run(() -> {
-                    CommandAddRequest commandAddRequest = objectMapper.readValue(command, CommandAddRequest.class);
-
-                    DeviceManagement deviceManagement = loApiClient.getDeviceManagement();
-                    Commands commands = deviceManagement.getCommands();
-                    commands.addCommand(deviceId, commandAddRequest);
-                });
+    public IotHubMessageResult send(String deviceId, String command) {
+        try {
+            Fallback<Void> objectFallback = Fallback.ofException(e -> new CommandException(e.getLastFailure()));
+            Failsafe.with(objectFallback, commandRetryPolicy).run(() -> {
+                CommandAddRequest commandAddRequest = objectMapper.readValue(command, CommandAddRequest.class);
+                DeviceManagement deviceManagement = loApiClient.getDeviceManagement();
+                Commands commands = deviceManagement.getCommands();
+                commands.addCommand(deviceId, commandAddRequest);
+            });
+            return IotHubMessageResult.COMPLETE;
+        } catch (CommandException e) {
+            LOG.error("Cannot send command", e);
+            return IotHubMessageResult.REJECT;
+        }
     }
 }
