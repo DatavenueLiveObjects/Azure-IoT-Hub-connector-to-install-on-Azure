@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
  * other than `Open`, `Close` and registerConnectionStatusChangeCallbaack to the
  * inner client (MultiplexingClient)
  */
-public class MultiplexingClientManager extends BaseClientManager {
+public class MultiplexingClientExt extends BaseClientExt {
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private final MultiplexingClient multiplexingClient;
@@ -34,7 +34,7 @@ public class MultiplexingClientManager extends BaseClientManager {
      * @param multiplexingClient the multiplexing client
      * @param multiplexClientId  user defined Id for the multiplexing client.
      */
-    public MultiplexingClientManager(MultiplexingClient multiplexingClient, String multiplexClientId) {
+    public MultiplexingClientExt(MultiplexingClient multiplexingClient, String multiplexClientId) {
         this.multiplexingClient = multiplexingClient;
         this.multiplexClientId = multiplexClientId;
         this.multiplexingClient.setConnectionStatusChangeCallback(this, this);

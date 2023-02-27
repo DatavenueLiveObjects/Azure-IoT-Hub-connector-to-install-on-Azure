@@ -8,7 +8,6 @@
 package com.orange.lo.sample.lo2iothub.azure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,7 +21,6 @@ import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 import org.junit.jupiter.api.Assertions;
@@ -43,10 +41,6 @@ class IotHubAdapterTest {
     @Mock
     private MessageSender messageSender;
     @Mock
-    private Map<String, DeviceClientManager> deviceManagers;
-    @Mock
-    private MultiplexingClientManager multiplexingClientManager;
-    @Mock
     private AzureIotHubProperties iotHubProperties;
     @Mock
     private Device device;
@@ -58,16 +52,15 @@ class IotHubAdapterTest {
 
     @BeforeEach
     void setUp() throws URISyntaxException {
-        iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, messageSender, iotHubProperties, multiplexingClientManager,
-                deviceManagers, true);
+        iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, messageSender, deviceClientManager, true);
         deviceClient = new DeviceClient(CONNECTION_STRING, IotHubClientProtocol.MQTT);
     }
 
     @Test
     void shouldCallMessageSenderWhenMessageIsSent() {
         
-        when(deviceManagers.get(DEVICE_ID)).thenReturn(deviceClientManager);
-        when(deviceClientManager.getClient()).thenReturn(deviceClient);
+        when(deviceClientManager.getDeviceClient(DEVICE_ID)).thenReturn(deviceClient);
+        
         String message = "{\"metadata\":{\"source\":\"iot-device-id\"}}";
 
         iotHubAdapter.sendMessage(DEVICE_ID, message);
@@ -79,31 +72,27 @@ class IotHubAdapterTest {
     void shouldUseDeviceManagersAndMultiplexingClientManagerAndIoTDeviceProviderWhenDeviceIsDeleted()
             throws InterruptedException, IotHubClientException, TimeoutException {
 
-        when(deviceManagers.get(any())).thenReturn(deviceClientManager);
-        when(deviceClientManager.getClient()).thenReturn(deviceClient);
-
         iotHubAdapter.deleteDevice(DEVICE_ID);
 
-        verify(multiplexingClientManager, times(1)).unregisterDeviceClient(deviceManagers.get(DEVICE_ID).getClient());
-        verify(deviceManagers, times(1)).remove(DEVICE_ID);
+        verify(deviceClientManager, times(1)).removeDeviceClient(DEVICE_ID);
         verify(ioTDeviceProvider, times(1)).deleteDevice(DEVICE_ID);
     }
 
     @Test
     void shouldUseIotClientCacheAndIoTDeviceProviderToCreateDeviceClient() {
 
-        when(deviceManagers.get(DEVICE_ID)).thenReturn(deviceClientManager);
-        when(deviceClientManager.getClient()).thenReturn(deviceClient);
+        when(deviceClientManager.getDeviceClient(DEVICE_ID)).thenReturn(deviceClient);
 
         DeviceClient dc = iotHubAdapter.createDeviceClient(DEVICE_ID);
 
         assertEquals(deviceClient, dc);
-        verify(deviceManagers, times(2)).get(DEVICE_ID);
+        verify(deviceClientManager, times(1)).containsDeviceClient(DEVICE_ID);
+        verify(deviceClientManager, times(1)).getDeviceClient(DEVICE_ID);
     }
 
     @Test
     void shouldThrowDeviceSynchronizationExceptionDuringCreatingDeviceClientWhenSynchronizationIsDisabled() {
-        IotHubAdapter iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, messageSender, iotHubProperties, multiplexingClientManager, deviceManagers, false);
+        IotHubAdapter iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, messageSender, deviceClientManager,false);
         when(ioTDeviceProvider.getDevice(DEVICE_ID)).thenReturn(null);
 
         Assertions.assertThrows(DeviceSynchronizationException.class, () -> {

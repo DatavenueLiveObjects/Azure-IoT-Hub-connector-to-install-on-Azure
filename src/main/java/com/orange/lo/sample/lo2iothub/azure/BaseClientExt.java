@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
  * here.
  */
 
-public abstract class BaseClientManager implements IotHubConnectionStatusChangeCallback, ConnectionStatusTracker {
+public abstract class BaseClientExt implements IotHubConnectionStatusChangeCallback, ConnectionStatusTracker {
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     protected static final int SLEEP_TIME_BEFORE_RECONNECTING_IN_SECONDS = 2;
