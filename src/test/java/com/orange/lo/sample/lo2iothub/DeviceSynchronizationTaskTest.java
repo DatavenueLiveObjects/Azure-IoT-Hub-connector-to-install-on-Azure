@@ -7,16 +7,17 @@
 
 package com.orange.lo.sample.lo2iothub;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
 import com.orange.lo.sample.lo2iothub.azure.IoTDevice;
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sdk.rest.model.Device;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -25,11 +26,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class DeviceSynchronizationTaskTest {
@@ -68,7 +69,7 @@ class DeviceSynchronizationTaskTest {
         executor.awaitTermination(2, TimeUnit.SECONDS);
 
         verify(loAdapter, times(1)).getDevices(LO_DEVICES_GROUP);
-        verify(iotHubAdapter, times(2)).createDeviceClient(anyString());
+        verify(iotHubAdapter, times(2)).createOrGetDeviceClient(anyString());
         verify(iotHubAdapter, times(1)).getDevices();
         verify(iotHubAdapter, times(1)).deleteDevice(anyString());
         verify(loAdapter, never()).startListeningForMessages();

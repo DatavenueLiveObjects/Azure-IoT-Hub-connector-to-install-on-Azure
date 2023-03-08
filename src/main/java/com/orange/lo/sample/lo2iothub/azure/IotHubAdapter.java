@@ -38,17 +38,9 @@ public class IotHubAdapter {
 
     public void sendMessage(String loClientId, String message) {
         try {
-            DeviceClient deviceClient = null;
-
-            if (deviceClientManager.containsDeviceClient(loClientId)) {
-                deviceClient = deviceClientManager.getDeviceClient(loClientId);
-            } else {
-                deviceClient = createDeviceClient(loClientId);
-            }
-
+            DeviceClient deviceClient = createOrGetDeviceClient(loClientId);
             messageSender.sendMessage(message, deviceClient);
         } catch (Exception e) {
-
             LOG.error("Cannot send message", e);
         }
     }
@@ -66,7 +58,7 @@ public class IotHubAdapter {
         }
     }
 
-    public DeviceClient createDeviceClient(String deviceId) {
+    public DeviceClient createOrGetDeviceClient(String deviceId) {
         synchronized (deviceId.intern()) {
 
             if (!deviceClientManager.containsDeviceClient(deviceId)) {
@@ -82,9 +74,9 @@ public class IotHubAdapter {
                 }
                 try {
                     deviceClientManager.createDeviceClient(device);
-                    LOG.info("Device client created for {}", deviceId);
+                    LOG.debug("Device client created for {}", deviceId);
                 } catch (InterruptedException | IotHubClientException | TimeoutException e) {
-                    // error is logged by the MultiplexingClientManager, no need to log it here, too
+                    LOG.error("Device client creation for {} failed, because of {}", deviceId, e.getMessage());
                 }
             }
             return deviceClientManager.getDeviceClient(deviceId);

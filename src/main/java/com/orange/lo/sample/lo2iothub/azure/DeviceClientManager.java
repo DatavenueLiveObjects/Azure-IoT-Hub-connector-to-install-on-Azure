@@ -1,46 +1,53 @@
 package com.orange.lo.sample.lo2iothub.azure;
 
+import com.microsoft.azure.sdk.iot.device.ConnectionStatusChangeContext;
 import com.microsoft.azure.sdk.iot.device.DeviceClient;
 import com.microsoft.azure.sdk.iot.device.IotHubClientProtocol;
+import com.microsoft.azure.sdk.iot.device.IotHubConnectionStatusChangeCallback;
+import com.microsoft.azure.sdk.iot.device.IotHubConnectionStatusChangeReason;
 import com.microsoft.azure.sdk.iot.device.IotHubMessageResult;
 import com.microsoft.azure.sdk.iot.device.Message;
 import com.microsoft.azure.sdk.iot.device.MessageCallback;
 import com.microsoft.azure.sdk.iot.device.MessageProperty;
 import com.microsoft.azure.sdk.iot.device.MultiplexingClient;
-import com.microsoft.azure.sdk.iot.device.MultiplexingClientOptions;
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
+import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.microsoft.azure.sdk.iot.service.registry.Device;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 
 import java.lang.invoke.MethodHandles;
+import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 
 public class DeviceClientManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     private static final String CONNECTION_STRING_PATTERN = "HostName=%s;DeviceId=%s;SharedAccessKey=%s";
-    
-    private List<MultiplexingClientExt> multiplexingClientExtList;
-    private Map<String, DeviceClientExt> deviceClientMap;
+    private AtomicInteger multiplexingClientNo;
+    private List<MultiplexingClient> multiplexingClientList;
+    private Map<String, DeviceClient> deviceClientMap;
     private LoCommandSender loCommandSender;
     private String host;
-    private String connectorType;
-    private String connectorVersion;
     
-    public DeviceClientManager(String host, String connectorType, String connectorVersion) throws IotHubClientException {
+    private final Object operationLock = new Object();
+    
+    public DeviceClientManager(String host) throws IotHubClientException {
         this.host = host;
-        this.connectorType = connectorType;
-        this.connectorVersion = connectorVersion;
-        this.deviceClientMap = new HashMap<String, DeviceClientExt>();
-        this.multiplexingClientExtList = new LinkedList<>();
+        this.deviceClientMap = Collections.synchronizedMap(new HashMap<String, DeviceClient>());
+        this.multiplexingClientList = Collections.synchronizedList(new LinkedList<>());
+        this.multiplexingClientNo = new AtomicInteger();
     }
 
     public void setLoCommandSender(LoCommandSender loCommandSender) {
@@ -51,20 +58,23 @@ public class DeviceClientManager {
         
         DeviceClient deviceClient = createNewDeviceClient(device);
         
-        MultiplexingClientExt freeMultiplexingClientManager = null;
-        for (MultiplexingClientExt multiplexingClientManager : multiplexingClientExtList) {
-            if (multiplexingClientManager.getClient().getRegisteredDeviceCount() < MultiplexingClient.MAX_MULTIPLEX_DEVICE_COUNT_AMQPS) {
-                freeMultiplexingClientManager = multiplexingClientManager;
-                break;
+        MultiplexingClient freeMultiplexingClient = null;
+        
+        synchronized (this.operationLock) {
+            for (MultiplexingClient multiplexingClient : multiplexingClientList) {
+                if (multiplexingClient.getRegisteredDeviceCount() < MultiplexingClient.MAX_MULTIPLEX_DEVICE_COUNT_AMQPS) {
+                    freeMultiplexingClient = multiplexingClient;
+                    break;
+                }
+            }
+            if (freeMultiplexingClient == null) {
+                freeMultiplexingClient = createMultiplexingClientManager();
+                multiplexingClientList.add(freeMultiplexingClient);
             }
         }
-        if (freeMultiplexingClientManager == null) {
-            freeMultiplexingClientManager = createMultiplexingClientManager();
-            multiplexingClientExtList.add(freeMultiplexingClientManager);
-        }
-        freeMultiplexingClientManager.registerDeviceClient(deviceClient);
-        deviceClientMap.put(deviceClient.getConfig().getDeviceId(),
-                new DeviceClientExt(deviceClient, freeMultiplexingClientManager));
+        
+        freeMultiplexingClient.registerDeviceClient(deviceClient);
+        deviceClientMap.put(deviceClient.getConfig().getDeviceId(), deviceClient);
         
         return deviceClient;
     }
@@ -77,7 +87,7 @@ public class DeviceClientManager {
     }
     
     public DeviceClient getDeviceClient(String deviceClientId) {
-        return deviceClientMap.get(deviceClientId).getClient();
+        return deviceClientMap.get(deviceClientId);
     }
 
     public boolean containsDeviceClient(String deviceClientId) {
@@ -85,24 +95,75 @@ public class DeviceClientManager {
     }
 
     public void removeDeviceClient(String deviceClientId) throws InterruptedException, IotHubClientException, TimeoutException {
-        for (MultiplexingClientExt multiplexingClientManager : multiplexingClientExtList) {
-            if (multiplexingClientManager.getClient().isDeviceRegistered(deviceClientId)) {
-                multiplexingClientManager.unregisterDeviceClient(deviceClientMap.get(deviceClientId).getClient());
+        for (MultiplexingClient multiplexingClient : multiplexingClientList) {
+            if (multiplexingClient.isDeviceRegistered(deviceClientId)) {
+                multiplexingClient.unregisterDeviceClient(deviceClientMap.get(deviceClientId));
                 deviceClientMap.remove(deviceClientId);
             }
         }
     }
 
-    private MultiplexingClientExt createMultiplexingClientManager() throws IotHubClientException {
-        LOG.debug("Creating MultiplexingClientManager ...");
-        MultiplexingClientOptions options = MultiplexingClientOptions.builder().build();
-        final MultiplexingClient multiplexingClient = new MultiplexingClient(host, IotHubClientProtocol.AMQPS, options);
-        MultiplexingClientExt multiplexingClientManager = new MultiplexingClientExt(multiplexingClient, connectorType + "-" + connectorVersion + "-" +UUID.randomUUID());
-        multiplexingClientManager.open();
-        LOG.debug("MultiplexingClientManager created");
-        return multiplexingClientManager;
+    private MultiplexingClient createMultiplexingClientManager() throws IotHubClientException {
+        final int clientNo = multiplexingClientNo.incrementAndGet();
+        LOG.info("Creating MultiplexingClient nr {}", clientNo);
+
+        final MultiplexingClient multiplexingClient = new MultiplexingClient(host, IotHubClientProtocol.AMQPS, null);
+        multiplexingClient.setConnectionStatusChangeCallback(new IotHubConnectionStatusChangeCallback() {
+            @Override
+            public void onStatusChanged(ConnectionStatusChangeContext connectionStatusChangeContext) {
+                IotHubConnectionStatus status = connectionStatusChangeContext.getNewStatus();
+                IotHubConnectionStatusChangeReason statusChangeReason = connectionStatusChangeContext.getNewStatusReason();
+                MultiplexingClient multiplexingClient = (MultiplexingClient) connectionStatusChangeContext.getCallbackContext();
+                
+                Throwable throwable = connectionStatusChangeContext.getCause();
+
+                if (throwable == null) {
+                    LOG.info("Connection status changed for client: {}, status: {}, reason: {}", clientNo, status, statusChangeReason);
+                } else {
+                    LOG.info("Connection status changed for client: {}, status: {}, reason: {}, error: {}", clientNo, status, statusChangeReason, throwable.getMessage());
+                }
+
+                if (status != IotHubConnectionStatus.CONNECTED) {
+                    reconnect(multiplexingClient, clientNo);
+                }
+            }
+        }, multiplexingClient);
+
+        connect(multiplexingClient, clientNo);
+        LOG.info("MultiplexingClient nr {} created", clientNo);
+        return multiplexingClient;
     }
     
+    private void connect(MultiplexingClient multiplexingClient, int clientNo) {
+        LOG.info("Opening MultiplexingClient nr {}", clientNo);
+        
+        Failsafe.with(getRetryPolicy(clientNo)).run(() -> {
+            multiplexingClient.open(false);
+            LOG.info("Opening MultiplexingClient nr {} success", clientNo);
+        });
+    }
+    
+    private void reconnect(MultiplexingClient multiplexingClient, int clientNo) {
+        LOG.info("Reconnecting MultiplexingClient nr {} " + clientNo);
+        
+        try {
+            LOG.info("Closing MultiplexingClient nr {} " + clientNo);
+            multiplexingClient.close();
+            LOG.info("Closing MultiplexingClient nr {} success" + clientNo);
+        } catch (Exception ex) {
+            LOG.error("Closing MultiplexingClient nr {} error because of {}", clientNo, ex.getMessage());
+        } 
+        connect(multiplexingClient, clientNo);    
+    }
+
+    private RetryPolicy<Void> getRetryPolicy(int clientNo) {
+        return new RetryPolicy<Void>()
+                .withMaxAttempts(-1)
+                .withBackoff(1,60, ChronoUnit.SECONDS)
+                .onRetry(e -> {
+                   LOG.info("Opening MultiplexingClient nr {} error because of {}, retrying ...", clientNo, e.getLastFailure().getMessage());
+                });
+    }
     private String getConnectionString(Device device) {
         String deviceId = device.getDeviceId();
         String primaryKey = device.getSymmetricKey().getPrimaryKey();

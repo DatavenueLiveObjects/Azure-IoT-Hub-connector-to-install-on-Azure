@@ -83,7 +83,7 @@ class IotHubAdapterTest {
 
         when(deviceClientManager.getDeviceClient(DEVICE_ID)).thenReturn(deviceClient);
 
-        DeviceClient dc = iotHubAdapter.createDeviceClient(DEVICE_ID);
+        DeviceClient dc = iotHubAdapter.createOrGetDeviceClient(DEVICE_ID);
 
         assertEquals(deviceClient, dc);
         verify(deviceClientManager, times(1)).containsDeviceClient(DEVICE_ID);
@@ -96,7 +96,7 @@ class IotHubAdapterTest {
         when(ioTDeviceProvider.getDevice(DEVICE_ID)).thenReturn(null);
 
         Assertions.assertThrows(DeviceSynchronizationException.class, () -> {
-            iotHubAdapter.createDeviceClient(DEVICE_ID);            
+            iotHubAdapter.createOrGetDeviceClient(DEVICE_ID);
         }, "DeviceSynchronizationException");
     }
 

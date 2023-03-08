@@ -65,7 +65,7 @@ public class MessageHandler implements DataManagementFifoCallback {
 
     private void handleDeviceCreationEvent(String message) {
         Optional<String> deviceId = getDeviceId(message);
-        deviceId.ifPresent(iotHubAdapter::createDeviceClient);
+        deviceId.ifPresent(iotHubAdapter::createOrGetDeviceClient);
     }
 
     private void handleDeviceRemovalEvent(String message) {

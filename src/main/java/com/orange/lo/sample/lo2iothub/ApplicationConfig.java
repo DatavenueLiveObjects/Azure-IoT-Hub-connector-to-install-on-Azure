@@ -97,9 +97,7 @@ public class ApplicationConfig {
                     LOG.debug("Initializing for {} ", azureIotHubProperties.getIotHostName());
                     IoTDeviceProvider ioTDeviceProvider = createIotDeviceProvider(azureIotHubProperties);
 
-                    DeviceClientManager deviceClientManager = new DeviceClientManager(
-                            azureIotHubProperties.getIotHostName(), liveObjectsProperties.getConnectorType(),
-                            getConnectorVersion());
+                    DeviceClientManager deviceClientManager = new DeviceClientManager(azureIotHubProperties.getIotHostName());
                     
                     IotHubAdapter iotHubAdapter = new IotHubAdapter(
                             ioTDeviceProvider, 
