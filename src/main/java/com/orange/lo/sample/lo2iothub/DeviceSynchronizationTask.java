@@ -53,7 +53,7 @@ public class DeviceSynchronizationTask implements Runnable {
                 int poolSize = azureIotHubProperties.getSynchronizationThreadPoolSize();
                 ThreadPoolExecutor synchronizingExecutor = new ThreadPoolExecutor(poolSize, poolSize, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(loIds.size()));
                 List<Callable<Void>> collect = loIds.stream().map(id -> (Callable<Void>) () -> {
-                    iotHubAdapter.createDeviceClient(id);
+                    iotHubAdapter.createOrGetDeviceClient(id);
                     return null;
                 }).collect(Collectors.toList());
                 synchronizingExecutor.invokeAll(collect);
