@@ -15,11 +15,6 @@ import com.orange.lo.sdk.rest.devicemanagement.Groups;
 import com.orange.lo.sdk.rest.devicemanagement.Inventory;
 import com.orange.lo.sdk.rest.model.Device;
 import com.orange.lo.sdk.rest.model.Group;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.web.client.HttpClientErrorException;
 
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -29,6 +24,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.client.HttpClientErrorException;
+
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 
 public class LoAdapter {
 
@@ -90,21 +92,24 @@ public class LoAdapter {
         List<String> deviceGroups = getGroupWithSubgroups(groupName);
 
         deviceGroups.forEach(groupId -> {
-            for (int offset = 0; ; offset++) {
-                GetDevicesFilter devicesFilter = new GetDevicesFilter()
-                        .withGroupId(groupId)
-                        .withLimit(pageSize)
-                        .withOffset(offset * pageSize);
+            List<Device> partDevices = new ArrayList<>();
+            GetDevicesFilter devicesFilter = new GetDevicesFilter().withGroupId(groupId).withLimit(pageSize);
+
+            while (true) {
+                if (partDevices.size() > 0) {
+                    devicesFilter.withBookmarkId(partDevices.get(partDevices.size() - 1).getId());
+                }
                 List<Device> loDevices = Failsafe.with(deviceRetryPolicy)
                         .get(() -> inventory.getDevices(devicesFilter));
                 LOG.trace("Got {} devices", loDevices.size());
-                devices.addAll(loDevices);
+                partDevices.addAll(loDevices);
                 if (loDevices.size() < pageSize) {
+                    devices.addAll(partDevices);
                     break;
                 }
             }
         });
-        LOG.trace("Devices: {}", devices);
+        LOG.trace("Devices: {}", devices.size());
         return devices;
     }
 

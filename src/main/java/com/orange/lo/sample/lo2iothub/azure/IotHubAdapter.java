@@ -74,7 +74,7 @@ public class IotHubAdapter {
                 }
                 try {
                     deviceClientManager.createDeviceClient(device);
-                    LOG.debug("Device client created for {}", deviceId);
+                    LOG.info("Device client created for {}", deviceId);
                 } catch (InterruptedException | IotHubClientException | TimeoutException e) {
                     LOG.error("Device client creation for {} failed, because of {}", deviceId, e.getMessage());
                 }
