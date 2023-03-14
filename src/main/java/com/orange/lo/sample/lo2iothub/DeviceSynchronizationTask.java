@@ -14,6 +14,7 @@ import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sdk.rest.model.Device;
 
 import java.lang.invoke.MethodHandles;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -22,12 +23,14 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import org.apache.commons.collections4.ListUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DeviceSynchronizationTask implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final int BATCH_SIZE = 100;
 
     private final IotHubAdapter iotHubAdapter;
     private final LoAdapter loAdapter;
@@ -52,8 +55,10 @@ public class DeviceSynchronizationTask implements Runnable {
             if (!loIds.isEmpty()) {
                 int poolSize = azureIotHubProperties.getSynchronizationThreadPoolSize();
                 ThreadPoolExecutor synchronizingExecutor = new ThreadPoolExecutor(poolSize, poolSize, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(loIds.size()));
-                List<Callable<Void>> collect = loIds.stream().map(id -> (Callable<Void>) () -> {
-                    iotHubAdapter.createOrGetDeviceClient(id);
+
+                List<List<String>> partition = ListUtils.partition(new ArrayList<>(loIds), BATCH_SIZE);
+                List<Callable<Void>> collect = partition.stream().map(ids -> (Callable<Void>) () -> {
+                    iotHubAdapter.createDeviceClients(ids);
                     return null;
                 }).collect(Collectors.toList());
                 synchronizingExecutor.invokeAll(collect);

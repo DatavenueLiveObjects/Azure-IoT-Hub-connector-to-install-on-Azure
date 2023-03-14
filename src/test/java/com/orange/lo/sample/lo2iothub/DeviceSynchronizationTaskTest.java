@@ -7,6 +7,7 @@
 
 package com.orange.lo.sample.lo2iothub;
 
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -69,7 +70,7 @@ class DeviceSynchronizationTaskTest {
         executor.awaitTermination(2, TimeUnit.SECONDS);
 
         verify(loAdapter, times(1)).getDevices(LO_DEVICES_GROUP);
-        verify(iotHubAdapter, times(2)).createOrGetDeviceClient(anyString());
+        verify(iotHubAdapter, times(1)).createDeviceClients(anyList());
         verify(iotHubAdapter, times(1)).getDevices();
         verify(iotHubAdapter, times(1)).deleteDevice(anyString());
         verify(loAdapter, never()).startListeningForMessages();

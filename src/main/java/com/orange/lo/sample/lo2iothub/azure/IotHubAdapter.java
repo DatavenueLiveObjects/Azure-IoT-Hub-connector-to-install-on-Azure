@@ -13,8 +13,10 @@ import com.microsoft.azure.sdk.iot.service.registry.Device;
 import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
 
 import java.lang.invoke.MethodHandles;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,6 +82,34 @@ public class IotHubAdapter {
                 }
             }
             return deviceClientManager.getDeviceClient(deviceId);
+        }
+    }
+
+    public void createDeviceClients(List<String> deviceIds) {
+        List<String> idsNotInManager = deviceIds.stream()
+                .filter(deviceId -> !deviceClientManager.containsDeviceClient(deviceId))
+                .collect(Collectors.toList());
+
+        List<Device> devices = new ArrayList<>();
+        for (String deviceId : idsNotInManager) {
+            synchronized (deviceId.intern()) {
+                Device device = ioTDeviceProvider.getDevice(deviceId);
+                // no device in iot hub
+                if (device == null) {
+                    if (deviceSynchronization) {
+                        device = ioTDeviceProvider.createDevice(deviceId);
+                    } else {
+                        throw new DeviceSynchronizationException(deviceId);
+                    }
+                }
+                devices.add(device);
+            }
+        }
+        try {
+            deviceClientManager.createDeviceClients(devices);
+            LOG.info("Device client created for {}", idsNotInManager.toArray());
+        } catch (InterruptedException | IotHubClientException | TimeoutException e) {
+            LOG.error("Device client creation for {} failed, because of {}", idsNotInManager.toArray(), e.getMessage());
         }
     }
 

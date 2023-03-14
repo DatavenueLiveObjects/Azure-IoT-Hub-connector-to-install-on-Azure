@@ -17,6 +17,8 @@ import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 
 import java.lang.invoke.MethodHandles;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -24,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,14 +58,31 @@ public class DeviceClientManager {
     }
 
     public DeviceClient createDeviceClient(Device device) throws InterruptedException, IotHubClientException, TimeoutException {
-        
         DeviceClient deviceClient = createNewDeviceClient(device);
-        
+
+        List<DeviceClient> clientList = new ArrayList<>();
+        clientList.add(deviceClient);
+        this.registerDeviceClients(clientList);
+
+        return deviceClient;
+    }
+
+    public List<DeviceClient> createDeviceClients(Collection<Device> devices) throws InterruptedException,
+            IotHubClientException, TimeoutException {
+        List<DeviceClient> deviceClients = devices.stream()
+                .map(this::createNewDeviceClient)
+                .collect(Collectors.toList());
+        this.registerDeviceClients(deviceClients);
+
+        return deviceClients;
+    }
+
+    private void registerDeviceClients(Collection<DeviceClient> deviceClients) throws IotHubClientException, InterruptedException {
         MultiplexingClient freeMultiplexingClient = null;
-        
         synchronized (this.operationLock) {
             for (MultiplexingClient multiplexingClient : multiplexingClientList) {
-                if (multiplexingClient.getRegisteredDeviceCount() < MultiplexingClient.MAX_MULTIPLEX_DEVICE_COUNT_AMQPS) {
+                int registeredDeviceCount = multiplexingClient.getRegisteredDeviceCount();
+                if (registeredDeviceCount + deviceClients.size() < MultiplexingClient.MAX_MULTIPLEX_DEVICE_COUNT_AMQPS) {
                     freeMultiplexingClient = multiplexingClient;
                     break;
                 }
@@ -72,13 +92,17 @@ public class DeviceClientManager {
                 multiplexingClientList.add(freeMultiplexingClient);
             }
         }
-        
-        freeMultiplexingClient.registerDeviceClient(deviceClient);
-        deviceClientMap.put(deviceClient.getConfig().getDeviceId(), deviceClient);
-        
-        return deviceClient;
+
+        freeMultiplexingClient.registerDeviceClients(deviceClients);
+        Map<String, DeviceClient> collect = deviceClients.stream()
+                .collect(Collectors.toMap(DeviceClientManager::getDeviceId, deviceClient -> deviceClient));
+        deviceClientMap.putAll(collect);
     }
-    
+
+    private static String getDeviceId(DeviceClient deviceClient) {
+        return deviceClient.getConfig().getDeviceId();
+    }
+
     private DeviceClient createNewDeviceClient(Device device) {
         String connString = getConnectionString(device);
         DeviceClient deviceClient = new DeviceClient(connString, IotHubClientProtocol.AMQPS);
