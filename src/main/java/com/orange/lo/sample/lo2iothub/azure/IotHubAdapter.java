@@ -48,8 +48,10 @@ public class IotHubAdapter {
     public void deleteDevice(String deviceId) {
         if (deviceSynchronization) {
             try {
-                deviceClientManager.removeDeviceClient(deviceId);
-                ioTDeviceProvider.deleteDevice(deviceId);
+                synchronized (deviceId.intern()) {
+                    deviceClientManager.removeDeviceClient(deviceId);
+                    ioTDeviceProvider.deleteDevice(deviceId);
+                }
             } catch (InterruptedException | IotHubClientException | TimeoutException e) {
                 LOG.error("Cannot delete device " + deviceId, e);
             }
@@ -72,12 +74,8 @@ public class IotHubAdapter {
                         throw new DeviceSynchronizationException(deviceId);
                     }
                 }
-                try {
-                    deviceClientManager.createDeviceClient(device);
-                    LOG.info("Device client created for {}", deviceId);
-                } catch (InterruptedException | IotHubClientException | TimeoutException e) {
-                    LOG.error("Device client creation for {} failed, because of {}", deviceId, e.getMessage());
-                }
+                deviceClientManager.createDeviceClient(device);
+                LOG.debug("Device client created for {}", deviceId);
             }
             return deviceClientManager.getDeviceClient(deviceId);
         }

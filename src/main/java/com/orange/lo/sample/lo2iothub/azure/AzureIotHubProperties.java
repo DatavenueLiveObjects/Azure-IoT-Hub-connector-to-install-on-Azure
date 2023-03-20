@@ -12,6 +12,7 @@ public class AzureIotHubProperties {
     private String iotConnectionString;
     private String iotHostName;
     private int synchronizationThreadPoolSize;
+    private int synchronizationPeriod;
     private int messagingThreadPoolSize;
     private int deviceClientConnectionTimeout;
     private String tagPlatformKey;
@@ -99,5 +100,13 @@ public class AzureIotHubProperties {
 
     public void setLoDevicesGroup(String loDevicesGroup) {
         this.loDevicesGroup = loDevicesGroup;
+    }
+
+    public int getSynchronizationPeriod() {
+        return synchronizationPeriod;
+    }
+
+    public void setSynchronizationPeriod(int synchronizationPeriod) {
+        this.synchronizationPeriod = synchronizationPeriod;
     }
 }
