@@ -17,11 +17,16 @@ import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 
 import java.lang.invoke.MethodHandles;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Phaser;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -39,43 +44,73 @@ public class DeviceClientManager {
     private List<MultiplexingClient> multiplexingClientList;
     private Map<String, DeviceClient> deviceClientMap;
     private LoCommandSender loCommandSender;
-    private String host;
     
+    private ScheduledExecutorService registerTaskScheduler;
+    private Phaser phaser = new Phaser(1);
+    private List<DeviceClient> deviceClientList = new ArrayList<DeviceClient>();
     private final Object operationLock = new Object();
     
-    public DeviceClientManager(String host) throws IotHubClientException {
+    private String host;
+    
+    public DeviceClientManager(String host, int period) throws IotHubClientException {
         this.host = host;
         this.deviceClientMap = Collections.synchronizedMap(new HashMap<String, DeviceClient>());
         this.multiplexingClientList = Collections.synchronizedList(new LinkedList<>());
         this.multiplexingClientNo = new AtomicInteger();
+
+        this.registerTaskScheduler = Executors.newScheduledThreadPool(1);
+        this.registerTaskScheduler.scheduleAtFixedRate(() -> send(), 0, period, TimeUnit.MILLISECONDS);
     }
+
 
     public void setLoCommandSender(LoCommandSender loCommandSender) {
         this.loCommandSender = loCommandSender;
     }
 
-    public DeviceClient createDeviceClient(Device device) throws InterruptedException, IotHubClientException, TimeoutException {
-        
-        DeviceClient deviceClient = createNewDeviceClient(device);
-        
-        MultiplexingClient freeMultiplexingClient = null;
-        
+    private void send() {
         synchronized (this.operationLock) {
-            for (MultiplexingClient multiplexingClient : multiplexingClientList) {
-                if (multiplexingClient.getRegisteredDeviceCount() < MultiplexingClient.MAX_MULTIPLEX_DEVICE_COUNT_AMQPS) {
-                    freeMultiplexingClient = multiplexingClient;
-                    break;
+            int size = deviceClientList.size();
+            if (size > 0) {
+                LOG.debug("Registering {} clients", size);
+                try {
+                    MultiplexingClient freeMultiplexingClient = getFreeMultiplexingClient();
+                    freeMultiplexingClient.registerDeviceClients(deviceClientList);
+                    deviceClientList.forEach(dc -> deviceClientMap.put(dc.getConfig().getDeviceId(), dc));
+                    deviceClientList.clear();
+                    LOG.info("Registered {} clients", size);
+                } catch (InterruptedException | IotHubClientException e) {
+                    LOG.error("Cannot register " + size + " clients", e);
+                } finally {
+                    phaser.arrive();
                 }
             }
-            if (freeMultiplexingClient == null) {
-                freeMultiplexingClient = createMultiplexingClientManager();
-                multiplexingClientList.add(freeMultiplexingClient);
+        }
+    }
+
+    private MultiplexingClient getFreeMultiplexingClient() throws IotHubClientException {
+        MultiplexingClient freeMultiplexingClient = null;
+        for (MultiplexingClient multiplexingClient : multiplexingClientList) {
+            if (multiplexingClient.getRegisteredDeviceCount()
+                    + deviceClientList.size() < MultiplexingClient.MAX_MULTIPLEX_DEVICE_COUNT_AMQPS) {
+                freeMultiplexingClient = multiplexingClient;
+                break;
             }
         }
-        
-        freeMultiplexingClient.registerDeviceClient(deviceClient);
-        deviceClientMap.put(deviceClient.getConfig().getDeviceId(), deviceClient);
-        
+        if (freeMultiplexingClient == null) {
+            freeMultiplexingClient = createMultiplexingClientManager();
+            multiplexingClientList.add(freeMultiplexingClient);
+        }
+        return freeMultiplexingClient;
+    }
+    
+    public DeviceClient createDeviceClient(Device device) {
+        DeviceClient deviceClient = createNewDeviceClient(device);
+        synchronized (this.operationLock) {
+            phaser.register();
+            deviceClientList.add(deviceClient);
+        }
+        phaser.arriveAndAwaitAdvance();
+        phaser.arriveAndDeregister();
         return deviceClient;
     }
     
