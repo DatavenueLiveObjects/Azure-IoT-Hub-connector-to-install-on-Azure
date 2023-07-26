@@ -173,7 +173,7 @@ public class DeviceClientManager {
         LOG.info("Opening MultiplexingClient nr {}", clientNo);
         
         Failsafe.with(getRetryPolicy(clientNo)).run(() -> {
-            multiplexingClient.open(false);
+            multiplexingClient.open(true);
             LOG.info("Opening MultiplexingClient nr {} success", clientNo);
         });
     }

@@ -39,7 +39,8 @@ public class IotHubAdapter {
     public void sendMessage(String loClientId, String message) {
         try {
             DeviceClient deviceClient = createOrGetDeviceClient(loClientId);
-            messageSender.sendMessage(message, deviceClient);
+            LoMessageDetails loMessageDetails = new LoMessageDetails(message, deviceClient);
+            messageSender.sendMessage(loMessageDetails);
         } catch (Exception e) {
             LOG.error("Cannot send message", e);
         }
