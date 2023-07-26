@@ -54,8 +54,8 @@ class MessageSenderTest {
     void sendMessage() {
         when(counterProvider.getMesasageSentAttemptCounter()).thenReturn(counter);
         String message = "{\"metadata\":{\"source\":\"iot-device-id\"}}";
-
-        messageSender.sendMessage(message, deviceClient);
+        LoMessageDetails loMessageDetails = new LoMessageDetails(message, deviceClient);
+        messageSender.sendMessage(loMessageDetails);
         verify(counterProvider, times(1)).getMesasageSentAttemptCounter();
     }
 }

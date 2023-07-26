@@ -8,6 +8,7 @@
 package com.orange.lo.sample.lo2iothub.azure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -65,7 +66,7 @@ class IotHubAdapterTest {
 
         iotHubAdapter.sendMessage(DEVICE_ID, message);
 
-        verify(messageSender, times(1)).sendMessage(message, deviceClient);
+        verify(messageSender, times(1)).sendMessage(any());
     }
 
     @Test
