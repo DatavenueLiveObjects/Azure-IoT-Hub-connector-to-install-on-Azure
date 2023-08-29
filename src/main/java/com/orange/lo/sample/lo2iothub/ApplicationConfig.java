@@ -60,15 +60,12 @@ public class ApplicationConfig {
 
     private Counters counters;
     private ApplicationProperties applicationProperties;
-    private MessageSender messageSender;
     private ObjectMapper objectMapper;
     private ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
 
-    public ApplicationConfig(Counters counterProvider, MessageSender messageSender,
-            ApplicationProperties applicationProperties, MappingJackson2HttpMessageConverter springJacksonConverter,
+    public ApplicationConfig(Counters counterProvider, ApplicationProperties applicationProperties, MappingJackson2HttpMessageConverter springJacksonConverter,
             ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint) {
         this.counters = counterProvider;
-        this.messageSender = messageSender;
         this.applicationProperties = applicationProperties;
         this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
         this.objectMapper = springJacksonConverter.getObjectMapper();
@@ -86,15 +83,17 @@ public class ApplicationConfig {
         RetryPolicy<List<Group>> groupRetryPolicy = restGroupRetryPolicy();
         RetryPolicy<List<Device>> deviceRetryPolicy = restDeviceRetryPolicy();
 
-        messageSender.setMessageRetryPolicy(messageRetryPolicy());
-
         applicationProperties.getTenantList().forEach(tenantProperties -> {
+
+
             LiveObjectsProperties liveObjectsProperties = tenantProperties.getLiveObjectsProperties();
             List<AzureIotHubProperties> azureIotHubList = tenantProperties.getAzureIotHubList();
 
             azureIotHubList.forEach(azureIotHubProperties -> {
                 try {
                     LOG.debug("Initializing for {} ", azureIotHubProperties.getIotHostName());
+                    MessageSender messageSender = new MessageSender(counters, azureIotHubProperties.getMessageExpiryTime());
+                    messageSender.setMessageRetryPolicy(messageRetryPolicy());
                     IoTDeviceProvider ioTDeviceProvider = createIotDeviceProvider(azureIotHubProperties);
 
                     DeviceClientManager deviceClientManager = new DeviceClientManager(

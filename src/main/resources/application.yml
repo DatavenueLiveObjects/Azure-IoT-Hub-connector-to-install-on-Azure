@@ -18,6 +18,7 @@ tenant-list:
         iot-host-name: YOUR_IOT_HOST_NAME
         synchronization-thread-pool-size: 10
         synchronization-period: 200
+        message-expiry-time: 1000
         device-client-connection-timeout: 5000
         tagPlatformKey: platform
         tagPlatformValue: LiveObjectsGroupIoT1
