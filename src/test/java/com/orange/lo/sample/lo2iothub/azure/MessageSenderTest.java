@@ -46,7 +46,7 @@ class MessageSenderTest {
                 .withMaxAttempts(-1)
                 .withBackoff(1, 60, ChronoUnit.SECONDS)
                 .withMaxDuration(Duration.ofHours(1));
-        messageSender = new MessageSender(counterProvider);
+        messageSender = new MessageSender(counterProvider, 1_000L);
         messageSender.setMessageRetryPolicy(messageRetryPolicy);
     }
 

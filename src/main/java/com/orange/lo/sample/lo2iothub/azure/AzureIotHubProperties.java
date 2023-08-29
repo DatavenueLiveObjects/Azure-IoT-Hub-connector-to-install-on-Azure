@@ -13,6 +13,7 @@ public class AzureIotHubProperties {
     private String iotHostName;
     private int synchronizationThreadPoolSize;
     private int synchronizationPeriod;
+    private long messageExpiryTime;
     private int messagingThreadPoolSize;
     private int deviceClientConnectionTimeout;
     private String tagPlatformKey;
@@ -108,5 +109,13 @@ public class AzureIotHubProperties {
 
     public void setSynchronizationPeriod(int synchronizationPeriod) {
         this.synchronizationPeriod = synchronizationPeriod;
+    }
+
+    public long getMessageExpiryTime() {
+        return messageExpiryTime;
+    }
+
+    public void setMessageExpiryTime(long messageExpiryTime) {
+        this.messageExpiryTime = messageExpiryTime;
     }
 }

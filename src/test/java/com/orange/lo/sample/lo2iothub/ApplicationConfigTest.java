@@ -39,7 +39,7 @@ class ApplicationConfigTest {
 
     @BeforeEach
     void setUp() {
-        applicationConfig = new ApplicationConfig(counterProvider, messageSender, applicationProperties, springJacksonConverter, connectorHealthActuatorEndpoint);
+        applicationConfig = new ApplicationConfig(counterProvider, applicationProperties, springJacksonConverter, connectorHealthActuatorEndpoint);
     }
 
     @Test

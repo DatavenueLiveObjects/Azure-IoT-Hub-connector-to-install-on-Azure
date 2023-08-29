@@ -26,17 +26,18 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.Fallback;
 import net.jodah.failsafe.RetryPolicy;
 
-@Component
 public class MessageSender {
 
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private Counters counterProvider;
+    private final long messageExpiryTime;
     private RetryPolicy<Void> messageRetryPolicy;
     private static final Map<String, MessageSentCallback> callbacksCache = new ConcurrentHashMap<>();
 
-    public MessageSender(Counters counterProvider) {
+    public MessageSender(Counters counterProvider, long messageExpiryTime) {
         this.counterProvider = counterProvider;
+        this.messageExpiryTime = messageExpiryTime;
     }
 
     public void setMessageRetryPolicy(RetryPolicy<Void> messageRetryPolicy) {
@@ -44,13 +45,14 @@ public class MessageSender {
     }
 
     public void sendMessage(LoMessageDetails loMessageDetails) {
-        MessageSentCallback messageSentCallback = callbacksCache.computeIfAbsent(loMessageDetails.getMessageId(), k -> new TelemetryAcknowledgedEventCallback());
+        MessageSentCallback messageSentCallback = callbacksCache.computeIfAbsent(loMessageDetails.getMessageId(), k -> new MessageSentCallbackImpl());
 
         try {
             Fallback<Void> objectFallback = Fallback.ofException(e -> new SendMessageException(e.getLastFailure()));
             Failsafe.with(objectFallback, messageRetryPolicy).run(() -> {
                 counterProvider.getMesasageSentAttemptCounter().increment();
                 Message message = new Message(loMessageDetails.getMessage());
+                message.setExpiryTime(messageExpiryTime);
                 loMessageDetails.getDeviceClient().sendEventAsync(message, messageSentCallback, loMessageDetails);
             });
         } catch (SendMessageException e) {
@@ -60,7 +62,7 @@ public class MessageSender {
         }
     }
 
-    private class TelemetryAcknowledgedEventCallback implements MessageSentCallback {
+    private class MessageSentCallbackImpl implements MessageSentCallback {
         private static final int MAX_ATTEMPTS = 5;
         private int actualRetryCount = 1;
 
@@ -89,7 +91,7 @@ public class MessageSender {
 
         private void goSleep(){
             try {
-                Thread.sleep(100 * actualRetryCount);
+                Thread.sleep(1000 * actualRetryCount);
             } catch (InterruptedException e) {}
         }
     }
