@@ -46,15 +46,17 @@ class MessageSenderTest {
                 .withMaxAttempts(-1)
                 .withBackoff(1, 60, ChronoUnit.SECONDS)
                 .withMaxDuration(Duration.ofHours(1));
-        messageSender = new MessageSender(counterProvider, 1_000L);
+        messageSender = new MessageSender(counterProvider);
         messageSender.setMessageRetryPolicy(messageRetryPolicy);
+        messageSender.setMessagesCache(new MessagesCache(messageSender));
     }
 
     @Test
     void sendMessage() {
         when(counterProvider.getMesasageSentAttemptCounter()).thenReturn(counter);
         String message = "{\"metadata\":{\"source\":\"iot-device-id\"}}";
-        LoMessageDetails loMessageDetails = new LoMessageDetails(message, deviceClient);
+        IoTHubClient ioTHubClient = new IoTHubClient(deviceClient,null);
+        LoMessageDetails loMessageDetails = new LoMessageDetails(message,  ioTHubClient);
         messageSender.sendMessage(loMessageDetails);
         verify(counterProvider, times(1)).getMesasageSentAttemptCounter();
     }

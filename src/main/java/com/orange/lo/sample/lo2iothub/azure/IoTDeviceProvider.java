@@ -47,7 +47,7 @@ public class IoTDeviceProvider {
         } catch (IotHubNotFoundException e) {
             return null;
         } catch (IotHubException | IOException e) {
-            throw new IotDeviceProviderException("Error while retrieving device ", e);
+            throw new IotDeviceProviderException("Error while retrieving device: " + deviceId, e);
         }
     }
 

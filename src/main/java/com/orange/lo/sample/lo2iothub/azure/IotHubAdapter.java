@@ -1,6 +1,6 @@
 /**
  * Copyright (c) Orange. All Rights Reserved.
- *
+ * <p>
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -29,7 +29,7 @@ public class IotHubAdapter {
     private DeviceClientManager deviceClientManager;
 
     public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider, MessageSender messageSender,
-            DeviceClientManager deviceClientManager, boolean deviceSynchronization) {
+                         DeviceClientManager deviceClientManager, boolean deviceSynchronization) {
         this.ioTDeviceProvider = ioTDeviceProvider;
         this.messageSender = messageSender;
         this.deviceClientManager = deviceClientManager;
@@ -37,13 +37,9 @@ public class IotHubAdapter {
     }
 
     public void sendMessage(String loClientId, String message) {
-        try {
-            DeviceClient deviceClient = createOrGetDeviceClient(loClientId);
-            LoMessageDetails loMessageDetails = new LoMessageDetails(message, deviceClient);
-            messageSender.sendMessage(loMessageDetails);
-        } catch (Exception e) {
-            LOG.error("Cannot send message", e);
-        }
+        IoTHubClient ioTHubClient = createOrGetDeviceClient(loClientId);
+        LoMessageDetails loMessageDetails = new LoMessageDetails(message, ioTHubClient);
+        messageSender.sendMessage(loMessageDetails);
     }
 
     public void deleteDevice(String deviceId) {
@@ -57,13 +53,12 @@ public class IotHubAdapter {
                 LOG.error("Cannot delete device " + deviceId, e);
             }
         } else {
-            throw new DeviceSynchronizationException(deviceId);
+            throw new DeviceSynchronizationException("Cannot delete device " + deviceId + " because device synchronization is disabled");
         }
     }
 
-    public DeviceClient createOrGetDeviceClient(String deviceId) {
+    public IoTHubClient createOrGetDeviceClient(String deviceId) {
         synchronized (deviceId.intern()) {
-
             if (!deviceClientManager.containsDeviceClient(deviceId)) {
                 LOG.debug("Creating device client that will be multiplexed: {} ", deviceId);
                 Device device = ioTDeviceProvider.getDevice(deviceId);
@@ -72,7 +67,7 @@ public class IotHubAdapter {
                     if (deviceSynchronization) {
                         device = ioTDeviceProvider.createDevice(deviceId);
                     } else {
-                        throw new DeviceSynchronizationException(deviceId);
+                        throw new DeviceSynchronizationException("Device " + deviceId + " does not exist in IoT Hub");
                     }
                 }
                 deviceClientManager.createDeviceClient(device);
