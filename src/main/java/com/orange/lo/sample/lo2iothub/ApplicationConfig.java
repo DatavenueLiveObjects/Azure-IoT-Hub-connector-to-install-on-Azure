@@ -12,11 +12,7 @@ import com.google.common.collect.Lists;
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
 import com.microsoft.azure.sdk.iot.service.registry.RegistryClient;
 import com.microsoft.azure.sdk.iot.service.twin.TwinClient;
-import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
-import com.orange.lo.sample.lo2iothub.azure.DeviceClientManager;
-import com.orange.lo.sample.lo2iothub.azure.IoTDeviceProvider;
-import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
-import com.orange.lo.sample.lo2iothub.azure.MessageSender;
+import com.orange.lo.sample.lo2iothub.azure.*;
 import com.orange.lo.sample.lo2iothub.exceptions.InitializationException;
 import com.orange.lo.sample.lo2iothub.lo.LiveObjectsProperties;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
@@ -92,8 +88,10 @@ public class ApplicationConfig {
             azureIotHubList.forEach(azureIotHubProperties -> {
                 try {
                     LOG.debug("Initializing for {} ", azureIotHubProperties.getIotHostName());
-                    MessageSender messageSender = new MessageSender(counters, azureIotHubProperties.getMessageExpiryTime());
+                    MessageSender messageSender = new MessageSender(counters);
+                    MessagesCache messagesCache = new MessagesCache(messageSender);
                     messageSender.setMessageRetryPolicy(messageRetryPolicy());
+                    messageSender.setMessagesCache(messagesCache);
                     IoTDeviceProvider ioTDeviceProvider = createIotDeviceProvider(azureIotHubProperties);
 
                     DeviceClientManager deviceClientManager = new DeviceClientManager(
@@ -167,7 +165,7 @@ public class ApplicationConfig {
         return new RetryPolicy<Void>().handleIf(e -> e instanceof IllegalStateException)
                 .withMaxAttempts(-1)
                 .withBackoff(1, 60, ChronoUnit.SECONDS)
-                .withMaxDuration(Duration.ofHours(1));
+                .withMaxDuration(Duration.ofMinutes(50));
     }
     
     public RetryPolicy<Void> restCommandRetryPolicy() {

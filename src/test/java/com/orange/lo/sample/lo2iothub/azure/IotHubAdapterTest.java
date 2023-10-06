@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 
 import com.microsoft.azure.sdk.iot.device.DeviceClient;
 import com.microsoft.azure.sdk.iot.device.IotHubClientProtocol;
+import com.microsoft.azure.sdk.iot.device.MultiplexingClient;
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
 import com.microsoft.azure.sdk.iot.service.registry.Device;
 import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
@@ -48,19 +49,24 @@ class IotHubAdapterTest {
     @Mock
     private DeviceClientManager deviceClientManager;
 
-    private DeviceClient deviceClient;
     private IotHubAdapter iotHubAdapter;
+
+    private DeviceClient deviceClient;
+    private MultiplexingClient multiplexingClient;
+    private IoTHubClient ioTHubClient;
 
     @BeforeEach
     void setUp() throws URISyntaxException {
         iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, messageSender, deviceClientManager, true);
         deviceClient = new DeviceClient(CONNECTION_STRING, IotHubClientProtocol.MQTT);
+        multiplexingClient = new MultiplexingClient(CONNECTION_STRING, IotHubClientProtocol.AMQPS);
+        ioTHubClient = new IoTHubClient(deviceClient, multiplexingClient);
     }
 
     @Test
     void shouldCallMessageSenderWhenMessageIsSent() {
         
-        when(deviceClientManager.getDeviceClient(DEVICE_ID)).thenReturn(deviceClient);
+        when(deviceClientManager.getDeviceClient(DEVICE_ID)).thenReturn(ioTHubClient);
         
         String message = "{\"metadata\":{\"source\":\"iot-device-id\"}}";
 
@@ -82,11 +88,11 @@ class IotHubAdapterTest {
     @Test
     void shouldUseIotClientCacheAndIoTDeviceProviderToCreateDeviceClient() {
 
-        when(deviceClientManager.getDeviceClient(DEVICE_ID)).thenReturn(deviceClient);
+        when(deviceClientManager.getDeviceClient(DEVICE_ID)).thenReturn(ioTHubClient);
 
-        DeviceClient dc = iotHubAdapter.createOrGetDeviceClient(DEVICE_ID);
+        IoTHubClient ioTHubClient = iotHubAdapter.createOrGetDeviceClient(DEVICE_ID);
 
-        assertEquals(deviceClient, dc);
+        assertEquals(deviceClient, ioTHubClient.getDeviceClient());
         verify(deviceClientManager, times(1)).containsDeviceClient(DEVICE_ID);
         verify(deviceClientManager, times(1)).getDeviceClient(DEVICE_ID);
     }

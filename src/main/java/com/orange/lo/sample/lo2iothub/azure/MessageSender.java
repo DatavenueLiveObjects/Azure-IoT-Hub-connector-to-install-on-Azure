@@ -20,31 +20,26 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.Fallback;
 import net.jodah.failsafe.RetryPolicy;
 
-public class MessageSender {
+public class MessageSender implements CacheExpiredListener {
 
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private Counters counterProvider;
-    private final long messageExpiryTime;
     private RetryPolicy<Void> messageRetryPolicy;
     private static final Map<String, MessageSentCallback> callbacksCache = new ConcurrentHashMap<>();
+    private MessagesCache messagesCache;
 
-    public MessageSender(Counters counterProvider, long messageExpiryTime) {
+    public MessageSender(Counters counterProvider) {
         this.counterProvider = counterProvider;
-        this.messageExpiryTime = messageExpiryTime;
-    }
-
-    public void setMessageRetryPolicy(RetryPolicy<Void> messageRetryPolicy) {
-        this.messageRetryPolicy = messageRetryPolicy;
     }
 
     public void sendMessage(LoMessageDetails loMessageDetails) {
+        messagesCache.put(loMessageDetails.getMessageId(), loMessageDetails);
         MessageSentCallback messageSentCallback = callbacksCache.computeIfAbsent(loMessageDetails.getMessageId(), k -> new MessageSentCallbackImpl());
 
         try {
@@ -52,14 +47,21 @@ public class MessageSender {
             Failsafe.with(objectFallback, messageRetryPolicy).run(() -> {
                 counterProvider.getMesasageSentAttemptCounter().increment();
                 Message message = new Message(loMessageDetails.getMessage());
-                message.setExpiryTime(messageExpiryTime);
-                loMessageDetails.getDeviceClient().sendEventAsync(message, messageSentCallback, loMessageDetails);
+                loMessageDetails.getIoTHubClient().getDeviceClient().sendEventAsync(message, messageSentCallback, loMessageDetails);
             });
         } catch (SendMessageException e) {
             LOG.error("Cannot send message created " + loMessageDetails.getMessageCreated() + " from " + loMessageDetails.getDeviceId(), e);
             counterProvider.getMesasageSentFailedCounter().increment();
             callbacksCache.remove(loMessageDetails.getMessageId());
+            messagesCache.invalidate(loMessageDetails.getMessageId());
         }
+    }
+
+    @Override
+    public void onExpired(String key, LoMessageDetails loMessageDetails) {
+        // Reconnect multiplex client. It will be recreated if it was closed.
+        LOG.debug("Message {} expired. Reconnecting multiplex client for device {}", loMessageDetails.getMessageId(), loMessageDetails.getDeviceId());
+        loMessageDetails.getIoTHubClient().getMultiplexingClient().close();
     }
 
     private class MessageSentCallbackImpl implements MessageSentCallback {
@@ -71,8 +73,9 @@ public class MessageSender {
 
             IotHubStatusCode status = exception == null ? IotHubStatusCode.OK : exception.getStatusCode();
             if (status == IotHubStatusCode.OK) {
-                counterProvider.getMesasageSentCounter().increment();
                 callbacksCache.remove(loMessageDetails.getMessageId());
+                messagesCache.invalidate(loMessageDetails.getMessageId());
+                counterProvider.getMesasageSentCounter().increment();
                 LOG.debug("IoT Hub responded to message created {} from {} with status {}", loMessageDetails.getMessageCreated(), loMessageDetails.getDeviceId(), status.name());
             } else {
                 counterProvider.getMesasageSentAttemptFailedCounter().increment();
@@ -83,6 +86,7 @@ public class MessageSender {
                     sendMessage(loMessageDetails);
                 } else {
                     callbacksCache.remove(loMessageDetails.getMessageId());
+                    messagesCache.invalidate(loMessageDetails.getMessageId());
                     counterProvider.getMesasageSentFailedCounter().increment();
                     LOG.error("IoT Hub responded to message created {} from {} with status {}. Message will not be sent again.", loMessageDetails.getMessageCreated(), loMessageDetails.getDeviceId(), status.name());
                 }
@@ -91,8 +95,16 @@ public class MessageSender {
 
         private void goSleep(){
             try {
-                Thread.sleep(1000 * actualRetryCount);
+                Thread.sleep(1000 * (1<<actualRetryCount));
             } catch (InterruptedException e) {}
         }
+    }
+
+    public void setMessagesCache(MessagesCache messagesCache) {
+        this.messagesCache = messagesCache;
+    }
+
+    public void setMessageRetryPolicy(RetryPolicy<Void> messageRetryPolicy) {
+        this.messageRetryPolicy = messageRetryPolicy;
     }
 }

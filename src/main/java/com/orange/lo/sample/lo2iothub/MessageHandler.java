@@ -8,6 +8,7 @@
 package com.orange.lo.sample.lo2iothub;
 
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
+import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
 import com.orange.lo.sdk.fifomqtt.DataManagementFifoCallback;
 
@@ -57,15 +58,25 @@ public class MessageHandler implements DataManagementFifoCallback {
 
     private void handleDataMessage(String message) {
         counterProvider.getMesasageReadCounter().increment();
-        Optional<String> sourceDeviceId = getSourceDeviceId(message);
-        if (sourceDeviceId.isPresent()) {
-            iotHubAdapter.sendMessage(sourceDeviceId.get(), message);
+        try {
+            String sourceDeviceId = getSourceDeviceId(message);
+            iotHubAdapter.sendMessage(sourceDeviceId, message);
+        } catch (JSONException e) {
+            LOG.error("Cannot read source device id from message", e);
+            counterProvider.getMesasageSentFailedCounter().increment();
+        } catch (DeviceSynchronizationException e) {
+            LOG.error("Cannot send message to IoT Hub because device doesn't exist", e);
+            counterProvider.getMesasageSentFailedCounter().increment();
+        } catch (Exception e) {
+            LOG.error("Cannot send message to IoT Hub", e);
+            counterProvider.getMesasageSentFailedCounter().increment();
         }
     }
 
     private void handleDeviceCreationEvent(String message) {
         Optional<String> deviceId = getDeviceId(message);
         deviceId.ifPresent(iotHubAdapter::createOrGetDeviceClient);
+
     }
 
     private void handleDeviceRemovalEvent(String message) {
@@ -73,15 +84,10 @@ public class MessageHandler implements DataManagementFifoCallback {
         deviceId.ifPresent(iotHubAdapter::deleteDevice);
     }
 
-    private static Optional<String> getSourceDeviceId(String msg) {
-        String id = null;
-        try {
-            id = new JSONObject(msg).getJSONObject("metadata").getString("source");
-        } catch (JSONException e) {
-            LOG.error("No device id in source");
-        }
-        return Optional.ofNullable(id);
+    private static String getSourceDeviceId(String msg) throws JSONException {
+        return new JSONObject(msg).getJSONObject("metadata").getString("source");
     }
+
     private static Optional<String> getDeviceId(String msg) {
         String id = null;
         try {
@@ -96,7 +102,6 @@ public class MessageHandler implements DataManagementFifoCallback {
         try {
             return new JSONObject(msg).getString(TYPE_FIELD);
         } catch (JSONException e) {
-            LOG.error("No message type in payload");
             return UNKNOWN_MESSAGE_TYPE;
         }
     }
