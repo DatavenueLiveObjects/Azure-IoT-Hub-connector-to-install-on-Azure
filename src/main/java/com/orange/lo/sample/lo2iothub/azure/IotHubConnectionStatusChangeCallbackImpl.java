@@ -1,30 +1,25 @@
 package com.orange.lo.sample.lo2iothub.azure;
 
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
-
-import java.lang.invoke.MethodHandles;
-import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.microsoft.azure.sdk.iot.device.ConnectionStatusChangeContext;
 import com.microsoft.azure.sdk.iot.device.IotHubConnectionStatusChangeCallback;
 import com.microsoft.azure.sdk.iot.device.IotHubConnectionStatusChangeReason;
 import com.microsoft.azure.sdk.iot.device.MultiplexingClient;
 import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.invoke.MethodHandles;
+import java.time.temporal.ChronoUnit;
 
 public class IotHubConnectionStatusChangeCallbackImpl implements IotHubConnectionStatusChangeCallback {
 
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-    private MultiplexingClient multiplexingClient;
-    private ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
-    public Map<MultiplexingClient, IotHubConnectionStatus> multiplexingClientStatus = new HashMap<>();
+    private final MultiplexingClient multiplexingClient;
+    private final ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
     int clientNo;
 
     public IotHubConnectionStatusChangeCallbackImpl(ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint, MultiplexingClient multiplexingClient, int clientNo) {
@@ -33,12 +28,11 @@ public class IotHubConnectionStatusChangeCallbackImpl implements IotHubConnectio
         this.clientNo = clientNo;
     }
 
-    @Override public void onStatusChanged(ConnectionStatusChangeContext connectionStatusChangeContext) {
+    @Override
+    public void onStatusChanged(ConnectionStatusChangeContext connectionStatusChangeContext) {
         IotHubConnectionStatus status = connectionStatusChangeContext.getNewStatus();
         IotHubConnectionStatusChangeReason statusChangeReason = connectionStatusChangeContext.getNewStatusReason();
-
-        multiplexingClientStatus.put(multiplexingClient, status);
-        connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(multiplexingClientStatus);
+        connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(multiplexingClient, status);
 
         Throwable throwable = connectionStatusChangeContext.getCause();
 
@@ -63,13 +57,13 @@ public class IotHubConnectionStatusChangeCallbackImpl implements IotHubConnectio
     }
 
     private void reconnectMultiplexingClient(MultiplexingClient multiplexingClient, int clientNo) {
-        LOG.info("Reconnecting MultiplexingClient nr {} " + clientNo);
+        LOG.info("Reconnecting MultiplexingClient nr {} ", clientNo);
 
         try {
-            LOG.info("Closing MultiplexingClient nr {} " + clientNo);
+            LOG.info("Closing MultiplexingClient nr {} ", clientNo);
             multiplexingClient.close();
             connect(multiplexingClient, clientNo);
-            LOG.info("Closing MultiplexingClient nr {} success" + clientNo);
+            LOG.info("Closing MultiplexingClient nr {} success", clientNo);
         } catch (Exception ex) {
             LOG.error("Reconnecting MultiplexingClient nr {} error because of {}", clientNo, ex.getMessage());
         }
@@ -79,8 +73,6 @@ public class IotHubConnectionStatusChangeCallbackImpl implements IotHubConnectio
         return new RetryPolicy<Void>()
                 .withMaxAttempts(-1)
                 .withBackoff(1, 60, ChronoUnit.SECONDS)
-                .onRetry(e -> {
-                    LOG.info("Opening MultiplexingClient nr {} error because of {}, retrying ...", clientNo, e.getLastFailure().getMessage());
-                });
+                .onRetry(e -> LOG.info("Opening MultiplexingClient nr {} error because of {}, retrying ...", clientNo, e.getLastFailure().getMessage()));
     }
 }
