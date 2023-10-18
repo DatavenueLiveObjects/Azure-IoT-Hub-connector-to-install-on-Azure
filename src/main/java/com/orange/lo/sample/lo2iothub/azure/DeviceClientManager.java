@@ -1,19 +1,7 @@
 package com.orange.lo.sample.lo2iothub.azure;
 
-import com.microsoft.azure.sdk.iot.device.ConnectionStatusChangeContext;
-import com.microsoft.azure.sdk.iot.device.DeviceClient;
-import com.microsoft.azure.sdk.iot.device.IotHubClientProtocol;
-import com.microsoft.azure.sdk.iot.device.IotHubConnectionStatusChangeCallback;
-import com.microsoft.azure.sdk.iot.device.IotHubConnectionStatusChangeReason;
-import com.microsoft.azure.sdk.iot.device.IotHubMessageResult;
-import com.microsoft.azure.sdk.iot.device.Message;
-import com.microsoft.azure.sdk.iot.device.MessageCallback;
-import com.microsoft.azure.sdk.iot.device.MessageProperty;
-import com.microsoft.azure.sdk.iot.device.MultiplexingClient;
-import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
-import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
-import com.microsoft.azure.sdk.iot.service.registry.Device;
-import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 
 import java.lang.invoke.MethodHandles;
 import java.time.temporal.ChronoUnit;
@@ -33,8 +21,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
+import com.microsoft.azure.sdk.iot.device.DeviceClient;
+import com.microsoft.azure.sdk.iot.device.IotHubClientProtocol;
+import com.microsoft.azure.sdk.iot.device.IotHubMessageResult;
+import com.microsoft.azure.sdk.iot.device.Message;
+import com.microsoft.azure.sdk.iot.device.MessageCallback;
+import com.microsoft.azure.sdk.iot.device.MessageProperty;
+import com.microsoft.azure.sdk.iot.device.MultiplexingClient;
+import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
+import com.microsoft.azure.sdk.iot.service.registry.Device;
+import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
+import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
 
 public class DeviceClientManager {
 
@@ -52,7 +49,10 @@ public class DeviceClientManager {
 
     private String host;
 
-    public DeviceClientManager(String host, int period) throws IotHubClientException {
+    private ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
+
+
+    public DeviceClientManager(String host, int period, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint) throws IotHubClientException {
         this.host = host;
         this.ioTHubClientMap = Collections.synchronizedMap(new HashMap<String, IoTHubClient>());
         this.multiplexingClientList = Collections.synchronizedList(new LinkedList<>());
@@ -60,6 +60,7 @@ public class DeviceClientManager {
 
         this.registerTaskScheduler = Executors.newScheduledThreadPool(1);
         this.registerTaskScheduler.scheduleAtFixedRate(() -> registerDeviceClientsAsMultiplexed(), 0, period, TimeUnit.MILLISECONDS);
+        this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
     }
 
     public void setLoCommandSender(LoCommandSender loCommandSender) {
@@ -142,26 +143,8 @@ public class DeviceClientManager {
         LOG.info("Creating MultiplexingClient nr {}", clientNo);
 
         final MultiplexingClient multiplexingClient = new MultiplexingClient(host, IotHubClientProtocol.AMQPS, null);
-        multiplexingClient.setConnectionStatusChangeCallback(new IotHubConnectionStatusChangeCallback() {
-            @Override
-            public void onStatusChanged(ConnectionStatusChangeContext connectionStatusChangeContext) {
-                IotHubConnectionStatus status = connectionStatusChangeContext.getNewStatus();
-                IotHubConnectionStatusChangeReason statusChangeReason = connectionStatusChangeContext.getNewStatusReason();
-                MultiplexingClient multiplexingClient = (MultiplexingClient) connectionStatusChangeContext.getCallbackContext();
-
-                Throwable throwable = connectionStatusChangeContext.getCause();
-
-                if (throwable == null) {
-                    LOG.info("Connection status changed for client: {}, status: {}, reason: {}", clientNo, status, statusChangeReason);
-                } else {
-                    LOG.info("Connection status changed for client: {}, status: {}, reason: {}, error: {}", clientNo, status, statusChangeReason, throwable.getMessage());
-                }
-
-                if (status == IotHubConnectionStatus.DISCONNECTED) {
-                    reconnectMultiplexingClient(multiplexingClient, clientNo);
-                }
-            }
-        }, multiplexingClient);
+        multiplexingClient.setConnectionStatusChangeCallback(
+                new IotHubConnectionStatusChangeCallbackImpl(connectorHealthActuatorEndpoint, multiplexingClient, clientNo), multiplexingClient);
 
         connect(multiplexingClient, clientNo);
         LOG.info("MultiplexingClient nr {} created", clientNo);

@@ -95,7 +95,7 @@ public class ApplicationConfig {
                     IoTDeviceProvider ioTDeviceProvider = createIotDeviceProvider(azureIotHubProperties);
 
                     DeviceClientManager deviceClientManager = new DeviceClientManager(
-                            azureIotHubProperties.getIotHostName(), azureIotHubProperties.getSynchronizationPeriod());
+                            azureIotHubProperties.getIotHostName(), azureIotHubProperties.getSynchronizationPeriod(), connectorHealthActuatorEndpoint);
                     
                     IotHubAdapter iotHubAdapter = new IotHubAdapter(
                             ioTDeviceProvider, 
