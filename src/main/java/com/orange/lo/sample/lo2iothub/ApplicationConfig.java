@@ -94,7 +94,7 @@ public class ApplicationConfig {
                     messageSender.setMessagesCache(messagesCache);
                     IoTDeviceProvider ioTDeviceProvider = createIotDeviceProvider(azureIotHubProperties);
 
-                    DeviceClientManager deviceClientManager = new DeviceClientManager(
+                    DeviceManager deviceClientManager = new DeviceManager(
                             azureIotHubProperties.getIotHostName(), azureIotHubProperties.getSynchronizationPeriod());
                     
                     IotHubAdapter iotHubAdapter = new IotHubAdapter(

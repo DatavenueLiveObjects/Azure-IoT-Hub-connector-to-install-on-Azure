@@ -7,7 +7,6 @@
 
 package com.orange.lo.sample.lo2iothub.azure;
 
-import com.microsoft.azure.sdk.iot.device.DeviceClient;
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
 import com.microsoft.azure.sdk.iot.service.registry.Device;
 import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
@@ -26,10 +25,10 @@ public class IotHubAdapter {
     private IoTDeviceProvider ioTDeviceProvider;
     private MessageSender messageSender;
     private boolean deviceSynchronization;
-    private DeviceClientManager deviceClientManager;
+    private DeviceManager deviceClientManager;
 
     public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider, MessageSender messageSender,
-                         DeviceClientManager deviceClientManager, boolean deviceSynchronization) {
+                         DeviceManager deviceClientManager, boolean deviceSynchronization) {
         this.ioTDeviceProvider = ioTDeviceProvider;
         this.messageSender = messageSender;
         this.deviceClientManager = deviceClientManager;

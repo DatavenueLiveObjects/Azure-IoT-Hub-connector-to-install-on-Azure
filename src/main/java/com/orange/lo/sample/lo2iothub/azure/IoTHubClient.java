@@ -12,6 +12,11 @@ public class IoTHubClient {
         this.multiplexingClient = multiplexingClient;
     }
 
+    public void sendMessage(){
+        multiplexingClient.putInCache();
+        deviceClient.sendEventAsync();
+    }
+
     public DeviceClient getDeviceClient() {
         return deviceClient;
     }

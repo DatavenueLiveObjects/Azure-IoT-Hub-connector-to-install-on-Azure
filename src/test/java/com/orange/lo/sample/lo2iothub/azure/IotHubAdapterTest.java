@@ -47,7 +47,7 @@ class IotHubAdapterTest {
     @Mock
     private Device device;
     @Mock
-    private DeviceClientManager deviceClientManager;
+    private DeviceManager deviceClientManager;
 
     private IotHubAdapter iotHubAdapter;
 
