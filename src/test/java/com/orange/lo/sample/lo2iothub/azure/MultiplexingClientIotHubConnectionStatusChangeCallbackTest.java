@@ -19,9 +19,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class IotHubConnectionStatusChangeCallbackImplTest {
+class MultiplexingClientIotHubConnectionStatusChangeCallbackTest {
 
-    private IotHubConnectionStatusChangeCallbackImpl iotHubConnectionStatusChangeCallback;
+    private MultiplexingClientIotHubConnectionStatusChangeCallback iotHubConnectionStatusChangeCallback;
     ConnectionStatusChangeContext connectionStatusChangeContext;
     @Mock
     ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
@@ -31,7 +31,7 @@ class IotHubConnectionStatusChangeCallbackImplTest {
         MultiplexingClient multiplexingClient = new MultiplexingClient("liveobjects.orange-business.com",
                 IotHubClientProtocol.AMQPS);
 
-        this.iotHubConnectionStatusChangeCallback = new IotHubConnectionStatusChangeCallbackImpl(
+        this.iotHubConnectionStatusChangeCallback = new MultiplexingClientIotHubConnectionStatusChangeCallback(
                 connectorHealthActuatorEndpoint, multiplexingClient, 1);
 
         connectionStatusChangeContext = new ConnectionStatusChangeContext(IotHubConnectionStatus.CONNECTED,

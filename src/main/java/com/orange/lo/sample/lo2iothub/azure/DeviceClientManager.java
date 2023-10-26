@@ -18,6 +18,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +40,7 @@ public class DeviceClientManager {
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     private static final String CONNECTION_STRING_PATTERN = "HostName=%s;DeviceId=%s;SharedAccessKey=%s";
     private AtomicInteger multiplexingClientIndex;
-    private List<MultiplexingClient> multiplexingClientList;
+    private List<Pair<MultiplexingClient, MutliplexedConnectionTracker>> multiplexingClientList;
     private Map<String, IoTHubClient> ioTHubClientMap;
     private LoCommandSender loCommandSender;
 
@@ -71,13 +73,16 @@ public class DeviceClientManager {
         synchronized (this.operationLock) {
             try {
                 while (deviceClientsToRegister.size() > 0) {
-                    MultiplexingClient multiplexingClient = getFreeMultiplexingClient();
-                    int registeredDeviceCount = multiplexingClient.getRegisteredDeviceCount();
+                    Pair<MultiplexingClient, MutliplexedConnectionTracker> multiplexingClientPair = getFreeMultiplexingClient();
+                    int registeredDeviceCount = multiplexingClientPair.getLeft().getRegisteredDeviceCount();
                     int remainingDeviceCount = MultiplexingClient.MAX_MULTIPLEX_DEVICE_COUNT_AMQPS - registeredDeviceCount;
                     int subListSize = Math.min(remainingDeviceCount, deviceClientsToRegister.size());
                     List<DeviceClient> subList = deviceClientsToRegister.subList(0, subListSize);
-                    multiplexingClient.registerDeviceClients(subList);
-                    subList.forEach(dc -> ioTHubClientMap.put(dc.getConfig().getDeviceId(), new IoTHubClient(dc, multiplexingClient)));
+                    multiplexingClientPair.getLeft().registerDeviceClients(subList);
+                    subList.forEach(dc -> {
+                        ioTHubClientMap.put(dc.getConfig().getDeviceId(), new IoTHubClient(dc, multiplexingClientPair.getLeft()));
+                        dc.setConnectionStatusChangeCallback(new DeviceClientIotHubConnectionStatusChangeCallback(dc, multiplexingClientPair.getLeft(), multiplexingClientPair.getRight()), dc);
+                    });
                     subList.clear();
                     LOG.info("Registered {} clients", subListSize);
                 }
@@ -89,11 +94,11 @@ public class DeviceClientManager {
         }
     }
 
-    private MultiplexingClient getFreeMultiplexingClient() throws IotHubClientException {
-        MultiplexingClient freeMultiplexingClient = null;
-        for (MultiplexingClient multiplexingClient : multiplexingClientList) {
-            if (multiplexingClient.getRegisteredDeviceCount() < MultiplexingClient.MAX_MULTIPLEX_DEVICE_COUNT_AMQPS) {
-                freeMultiplexingClient = multiplexingClient;
+    private Pair<MultiplexingClient, MutliplexedConnectionTracker> getFreeMultiplexingClient() throws IotHubClientException {
+        Pair<MultiplexingClient, MutliplexedConnectionTracker> freeMultiplexingClient = null;
+        for (Pair<MultiplexingClient, MutliplexedConnectionTracker> multiplexingClientPair : multiplexingClientList) {
+            if (multiplexingClientPair.getLeft().getRegisteredDeviceCount() < MultiplexingClient.MAX_MULTIPLEX_DEVICE_COUNT_AMQPS) {
+                freeMultiplexingClient = multiplexingClientPair;
                 break;
             }
         }
@@ -130,56 +135,40 @@ public class DeviceClientManager {
     }
 
     public void removeDeviceClient(String deviceClientId) throws InterruptedException, IotHubClientException, TimeoutException {
-        for (MultiplexingClient multiplexingClient : multiplexingClientList) {
-            if (multiplexingClient.isDeviceRegistered(deviceClientId)) {
-                multiplexingClient.unregisterDeviceClient(ioTHubClientMap.get(deviceClientId).getDeviceClient());
+        for (Pair<MultiplexingClient, MutliplexedConnectionTracker> multiplexingClientPair : multiplexingClientList) {
+            if (multiplexingClientPair.getLeft().isDeviceRegistered(deviceClientId)) {
+                multiplexingClientPair.getLeft().unregisterDeviceClient(ioTHubClientMap.get(deviceClientId).getDeviceClient());
                 ioTHubClientMap.remove(deviceClientId);
             }
         }
     }
 
-    private MultiplexingClient createMultiplexingClientManager() throws IotHubClientException {
+    private Pair<MultiplexingClient, MutliplexedConnectionTracker> createMultiplexingClientManager() throws IotHubClientException {
         final int clientNo = multiplexingClientIndex.incrementAndGet();
         LOG.info("Creating MultiplexingClient nr {}", clientNo);
 
         final MultiplexingClient multiplexingClient = new MultiplexingClient(host, IotHubClientProtocol.AMQPS, null);
-        multiplexingClient.setConnectionStatusChangeCallback(
-                new IotHubConnectionStatusChangeCallbackImpl(connectorHealthActuatorEndpoint, multiplexingClient, clientNo), multiplexingClient);
-
+        MultiplexingClientIotHubConnectionStatusChangeCallback multiplexingClientIotHubConnectionStatusChangeCallback = new MultiplexingClientIotHubConnectionStatusChangeCallback(connectorHealthActuatorEndpoint, multiplexingClient, clientNo);
+        multiplexingClient.setConnectionStatusChangeCallback(multiplexingClientIotHubConnectionStatusChangeCallback, multiplexingClient);
         connect(multiplexingClient, clientNo);
+
         LOG.info("MultiplexingClient nr {} created", clientNo);
-        return multiplexingClient;
+        return ImmutablePair.of(multiplexingClient, multiplexingClientIotHubConnectionStatusChangeCallback);
     }
 
     private void connect(MultiplexingClient multiplexingClient, int clientNo) {
-        LOG.info("Opening MultiplexingClient nr {}", clientNo);
-
-        Failsafe.with(getRetryPolicy(clientNo)).run(() -> {
+        Failsafe.with(getOpenRetryPolicy(clientNo)).run(() -> {
+            LOG.info("Opening MultiplexingClient nr {}", clientNo);
             multiplexingClient.open(true);
             LOG.info("Opening MultiplexingClient nr {} success", clientNo);
         });
     }
 
-    private void reconnectMultiplexingClient(MultiplexingClient multiplexingClient, int clientNo) {
-        LOG.info("Reconnecting MultiplexingClient nr {} " + clientNo);
-
-        try {
-            LOG.info("Closing MultiplexingClient nr {} " + clientNo);
-            multiplexingClient.close();
-            connect(multiplexingClient, clientNo);
-            LOG.info("Closing MultiplexingClient nr {} success" + clientNo);
-        } catch (Exception ex) {
-            LOG.error("Reconnecting MultiplexingClient nr {} error because of {}", clientNo, ex.getMessage());
-        }
-    }
-
-    private RetryPolicy<Void> getRetryPolicy(int clientNo) {
+    private RetryPolicy<Void> getOpenRetryPolicy(int clientNo) {
         return new RetryPolicy<Void>()
                 .withMaxAttempts(-1)
                 .withBackoff(1, 60, ChronoUnit.SECONDS)
-                .onRetry(e -> {
-                    LOG.info("Opening MultiplexingClient nr {} error because of {}, retrying ...", clientNo, e.getLastFailure().getMessage());
-                });
+                .onRetry(e -> LOG.error("Opening MultiplexingClient nr " + clientNo + " error because of " + e.getLastFailure().getMessage() + ", retrying ...", e.getLastFailure()));
     }
 
     private String getConnectionString(Device device) {
