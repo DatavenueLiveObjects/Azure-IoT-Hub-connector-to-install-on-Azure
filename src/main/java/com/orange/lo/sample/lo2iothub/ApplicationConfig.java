@@ -89,9 +89,7 @@ public class ApplicationConfig {
                 try {
                     LOG.debug("Initializing for {} ", azureIotHubProperties.getIotHostName());
                     MessageSender messageSender = new MessageSender(counters);
-                    MessagesCache messagesCache = new MessagesCache(messageSender);
                     messageSender.setMessageRetryPolicy(messageRetryPolicy());
-                    messageSender.setMessagesCache(messagesCache);
                     IoTDeviceProvider ioTDeviceProvider = createIotDeviceProvider(azureIotHubProperties);
 
                     DeviceClientManager deviceClientManager = new DeviceClientManager(
@@ -165,7 +163,7 @@ public class ApplicationConfig {
         return new RetryPolicy<Void>().handleIf(e -> e instanceof IllegalStateException)
                 .withMaxAttempts(-1)
                 .withBackoff(1, 60, ChronoUnit.SECONDS)
-                .withMaxDuration(Duration.ofMinutes(50));
+                .withMaxDuration(Duration.ofMinutes(60));
     }
     
     public RetryPolicy<Void> restCommandRetryPolicy() {

@@ -48,7 +48,6 @@ class MessageSenderTest {
                 .withMaxDuration(Duration.ofHours(1));
         messageSender = new MessageSender(counterProvider);
         messageSender.setMessageRetryPolicy(messageRetryPolicy);
-        messageSender.setMessagesCache(new MessagesCache(messageSender));
     }
 
     @Test

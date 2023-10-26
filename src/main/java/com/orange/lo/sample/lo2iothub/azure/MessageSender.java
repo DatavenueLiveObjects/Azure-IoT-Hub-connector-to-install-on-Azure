@@ -25,21 +25,19 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.Fallback;
 import net.jodah.failsafe.RetryPolicy;
 
-public class MessageSender implements CacheExpiredListener {
+public class MessageSender {
 
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private Counters counterProvider;
     private RetryPolicy<Void> messageRetryPolicy;
     private static final Map<String, MessageSentCallback> callbacksCache = new ConcurrentHashMap<>();
-    private MessagesCache messagesCache;
 
     public MessageSender(Counters counterProvider) {
         this.counterProvider = counterProvider;
     }
 
     public void sendMessage(LoMessageDetails loMessageDetails) {
-        messagesCache.put(loMessageDetails.getMessageId(), loMessageDetails);
         MessageSentCallback messageSentCallback = callbacksCache.computeIfAbsent(loMessageDetails.getMessageId(), k -> new MessageSentCallbackImpl());
 
         try {
@@ -47,21 +45,14 @@ public class MessageSender implements CacheExpiredListener {
             Failsafe.with(objectFallback, messageRetryPolicy).run(() -> {
                 counterProvider.getMesasageSentAttemptCounter().increment();
                 Message message = new Message(loMessageDetails.getMessage());
+                message.setExpiryTime(60_000); // 1 minute
                 loMessageDetails.getIoTHubClient().getDeviceClient().sendEventAsync(message, messageSentCallback, loMessageDetails);
             });
         } catch (SendMessageException e) {
             LOG.error("Cannot send message created " + loMessageDetails.getMessageCreated() + " from " + loMessageDetails.getDeviceId(), e);
             counterProvider.getMesasageSentFailedCounter().increment();
             callbacksCache.remove(loMessageDetails.getMessageId());
-            messagesCache.invalidate(loMessageDetails.getMessageId());
         }
-    }
-
-    @Override
-    public void onExpired(String key, LoMessageDetails loMessageDetails) {
-        // Reconnect multiplex client. It will be recreated if it was closed.
-        LOG.debug("Message {} expired. Reconnecting multiplex client for device {}", loMessageDetails.getMessageId(), loMessageDetails.getDeviceId());
-        loMessageDetails.getIoTHubClient().getMultiplexingClient().close();
     }
 
     private class MessageSentCallbackImpl implements MessageSentCallback {
@@ -73,22 +64,20 @@ public class MessageSender implements CacheExpiredListener {
 
             IotHubStatusCode status = exception == null ? IotHubStatusCode.OK : exception.getStatusCode();
             if (status == IotHubStatusCode.OK) {
-                callbacksCache.remove(loMessageDetails.getMessageId());
-                messagesCache.invalidate(loMessageDetails.getMessageId());
-                counterProvider.getMesasageSentCounter().increment();
                 LOG.debug("IoT Hub responded to message created {} from {} with status {}", loMessageDetails.getMessageCreated(), loMessageDetails.getDeviceId(), status.name());
+                callbacksCache.remove(loMessageDetails.getMessageId());
+                counterProvider.getMesasageSentCounter().increment();
             } else {
                 counterProvider.getMesasageSentAttemptFailedCounter().increment();
                 if (actualRetryCount < MAX_ATTEMPTS) {
-                    actualRetryCount++;
                     LOG.debug("IoT Hub responded to message created {} from {} with status {}. Retrying...", loMessageDetails.getMessageCreated(), loMessageDetails.getDeviceId(), status.name());
+                    actualRetryCount++;
                     goSleep();
                     sendMessage(loMessageDetails);
                 } else {
-                    callbacksCache.remove(loMessageDetails.getMessageId());
-                    messagesCache.invalidate(loMessageDetails.getMessageId());
-                    counterProvider.getMesasageSentFailedCounter().increment();
                     LOG.error("IoT Hub responded to message created {} from {} with status {}. Message will not be sent again.", loMessageDetails.getMessageCreated(), loMessageDetails.getDeviceId(), status.name());
+                    callbacksCache.remove(loMessageDetails.getMessageId());
+                    counterProvider.getMesasageSentFailedCounter().increment();
                 }
             }
         }
@@ -98,10 +87,6 @@ public class MessageSender implements CacheExpiredListener {
                 Thread.sleep(1000 * (1<<actualRetryCount));
             } catch (InterruptedException e) {}
         }
-    }
-
-    public void setMessagesCache(MessagesCache messagesCache) {
-        this.messagesCache = messagesCache;
     }
 
     public void setMessageRetryPolicy(RetryPolicy<Void> messageRetryPolicy) {
