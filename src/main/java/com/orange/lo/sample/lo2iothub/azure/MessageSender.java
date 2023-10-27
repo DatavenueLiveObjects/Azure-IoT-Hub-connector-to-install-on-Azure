@@ -15,6 +15,7 @@ import com.orange.lo.sample.lo2iothub.exceptions.SendMessageException;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
 
 import java.lang.invoke.MethodHandles;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -61,8 +62,8 @@ public class MessageSender {
 
         public void onMessageSent(Message sentMessage, IotHubClientException exception, Object context) {
             LoMessageDetails loMessageDetails = (LoMessageDetails) context;
-
             IotHubStatusCode status = exception == null ? IotHubStatusCode.OK : exception.getStatusCode();
+
             if (status == IotHubStatusCode.OK) {
                 LOG.debug("IoT Hub responded to message created {} from {} with status {}", loMessageDetails.getMessageCreated(), loMessageDetails.getDeviceId(), status.name());
                 callbacksCache.remove(loMessageDetails.getMessageId());
@@ -72,6 +73,7 @@ public class MessageSender {
                 if (actualRetryCount < MAX_ATTEMPTS) {
                     LOG.debug("IoT Hub responded to message created {} from {} with status {}. Retrying...", loMessageDetails.getMessageCreated(), loMessageDetails.getDeviceId(), status.name());
                     actualRetryCount++;
+                    reestablishSession(loMessageDetails.getIoTHubClient());
                     goSleep();
                     sendMessage(loMessageDetails);
                 } else {
@@ -86,6 +88,17 @@ public class MessageSender {
             try {
                 Thread.sleep(1000 * (1<<actualRetryCount));
             } catch (InterruptedException e) {}
+        }
+
+        // All we need to do is to unregister device client from multiplexing client,
+        // because multiplexing client will register it again (using DeviceClientIotHubConnectionStatusChangeCallback.onStatusChanged callback)
+        private void reestablishSession(IoTHubClient ioTHubClient) {
+            LOG.info("Try to reconnect device client: {}", ioTHubClient.getDeviceClient().getConfig().getDeviceId());
+            try {
+                ioTHubClient.getMultiplexingClient().unregisterDeviceClient(ioTHubClient.getDeviceClient());
+            } catch (Exception e) {
+                //doesn't matter, it means that device client is already unregistered by multiplexing client
+            }
         }
     }
 

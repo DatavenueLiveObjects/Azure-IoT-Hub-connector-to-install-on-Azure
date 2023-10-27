@@ -17,13 +17,11 @@ public class DeviceClientIotHubConnectionStatusChangeCallback implements IotHubC
     private final DeviceClient deviceClient;
     private final MultiplexingClient multiplexingClient;
     private final MutliplexedConnectionTracker mutliplexedConnectionTracker;
-    private boolean reconnectionInProgress;
 
     public DeviceClientIotHubConnectionStatusChangeCallback(DeviceClient deviceClient, MultiplexingClient multiplexingClient, MutliplexedConnectionTracker mutliplexedConnectionTracker) {
         this.deviceClient = deviceClient;
         this.multiplexingClient = multiplexingClient;
         this.mutliplexedConnectionTracker = mutliplexedConnectionTracker;
-        this.reconnectionInProgress = false;
     }
 
     @Override
@@ -39,8 +37,7 @@ public class DeviceClientIotHubConnectionStatusChangeCallback implements IotHubC
         }
 
         // This device is always multiplexed so if multiplexing client is reconnecting we do not want to reconnect device client
-        if (status == IotHubConnectionStatus.DISCONNECTED && mutliplexedConnectionTracker.getMultiplexedConnectionStatus() == IotHubConnectionStatus.CONNECTED && !reconnectionInProgress) {
-            reconnectionInProgress = true;
+        if (status == IotHubConnectionStatus.DISCONNECTED && mutliplexedConnectionTracker.getMultiplexedConnectionStatus() == IotHubConnectionStatus.CONNECTED) {
             new Thread(() -> {
                 reestablishSession();
             }).start();
@@ -49,14 +46,18 @@ public class DeviceClientIotHubConnectionStatusChangeCallback implements IotHubC
 
     private void reestablishSession() {
         Failsafe.with(getReconnectRetryPolicy()).run(() -> {
-            LOG.info("Reconnecting device client: {}", deviceClient.getConfig().getDeviceId());
-            LOG.info("Unregister device client: {}", deviceClient.getConfig().getDeviceId());
-            multiplexingClient.unregisterDeviceClient(deviceClient);
-            LOG.info("Unregister device client: {} success", deviceClient.getConfig().getDeviceId());
-            LOG.info("Register device client: {}", deviceClient.getConfig().getDeviceId());
-            multiplexingClient.registerDeviceClient(deviceClient);
-            LOG.info("Register device client: {} success", deviceClient.getConfig().getDeviceId());
-            reconnectionInProgress = false;
+            // check 2nd time because here we are in different thread and multiplexing client could be disconnected
+            if (mutliplexedConnectionTracker.getMultiplexedConnectionStatus() == IotHubConnectionStatus.CONNECTED) {
+                LOG.info("Reconnecting device client: {}", deviceClient.getConfig().getDeviceId());
+                if (multiplexingClient.isDeviceRegistered(deviceClient.getConfig().getDeviceId())) {
+                    LOG.info("Unregister device client: {}", deviceClient.getConfig().getDeviceId());
+                    multiplexingClient.unregisterDeviceClient(deviceClient);
+                    LOG.info("Unregister device client: {} success", deviceClient.getConfig().getDeviceId());
+                }
+                LOG.info("Register device client: {}", deviceClient.getConfig().getDeviceId());
+                multiplexingClient.registerDeviceClient(deviceClient);
+                LOG.info("Register device client: {} success", deviceClient.getConfig().getDeviceId());
+            }
         });
     }
 
