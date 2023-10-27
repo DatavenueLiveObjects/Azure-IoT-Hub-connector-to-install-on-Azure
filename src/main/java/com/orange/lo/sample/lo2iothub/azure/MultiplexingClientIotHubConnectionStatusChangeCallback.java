@@ -22,13 +22,11 @@ public class MultiplexingClientIotHubConnectionStatusChangeCallback implements I
     private IotHubConnectionStatus multiplexedConnectionStatus;
     private final ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
     private final int clientNo;
-    private boolean reconnectionInProgress;
 
     public MultiplexingClientIotHubConnectionStatusChangeCallback(ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint, MultiplexingClient multiplexingClient, int clientNo) {
         this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
         this.multiplexingClient = multiplexingClient;
         this.clientNo = clientNo;
-        this.reconnectionInProgress = false;
     }
 
     @Override
@@ -45,8 +43,7 @@ public class MultiplexingClientIotHubConnectionStatusChangeCallback implements I
             LOG.error("Connection status changed for multiplexing client: {}, status: {}, reason: {}, error: {}", clientNo, multiplexedConnectionStatus, statusChangeReason, throwable.getMessage());
         }
 
-        if (multiplexedConnectionStatus == IotHubConnectionStatus.DISCONNECTED && !reconnectionInProgress) {
-            reconnectionInProgress = true;
+        if (multiplexedConnectionStatus == IotHubConnectionStatus.DISCONNECTED) {
             new Thread(() -> {
                 reconnectMultiplexingClient(multiplexingClient, clientNo);
             }).start();
@@ -63,7 +60,6 @@ public class MultiplexingClientIotHubConnectionStatusChangeCallback implements I
             multiplexingClient.open(true);
             LOG.info("Opening MultiplexingClient nr {} success", clientNo);
             LOG.info("Reconnecting MultiplexingClient nr {} success", clientNo);
-            reconnectionInProgress = false;
         });
     }
 
