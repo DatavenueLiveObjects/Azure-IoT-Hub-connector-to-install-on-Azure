@@ -5,7 +5,7 @@
   ~ LICENSE file in the root directory of this source tree.
   -->
 
-<configuration>
+<configuration scan="true" scanPeriod="15 minutes">
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
@@ -38,7 +38,9 @@
     <logger name="com.orange.lo.sample.lo2iothub" level="DEBUG" />
     <logger name="org.eclipse.paho.client.mqttv3"  level="FINE" />
     <logger name="com.microsoft.azure" level="ERROR" />
-    
+    <logger name="org.apache.qpid" level="FINE"/>
+    <logger name="proton.trace" level="FINE" />
+
     <root level="INFO">
         <appender-ref ref="STDOUT" />
         <appender-ref ref="FILE_INFO"/>
