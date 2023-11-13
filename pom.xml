@@ -51,19 +51,8 @@
         <dependency>
             <groupId>com.microsoft.azure.sdk.iot</groupId>
             <artifactId>iot-device-client</artifactId>
-            <version>2.3.1</version>
-			<exclusions>
-				<exclusion>
-					<groupId>org.apache.qpid</groupId>
-					<artifactId>proton-j</artifactId>
-				</exclusion>
-			</exclusions>
+            <version>2.4.0</version>
         </dependency>
-		<dependency>
-			<groupId>org.apache.qpid</groupId>
-			<artifactId>proton-j</artifactId>
-			<version>0.34.1</version>
-		</dependency>
 		<dependency>
 		    <groupId>com.microsoft.azure</groupId>
 		    <artifactId>applicationinsights-spring-boot-starter</artifactId>

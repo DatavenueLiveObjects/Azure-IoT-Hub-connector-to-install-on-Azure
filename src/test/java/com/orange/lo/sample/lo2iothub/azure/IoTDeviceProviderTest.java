@@ -69,7 +69,7 @@ class IoTDeviceProviderTest {
         when(twin.getDeviceId()).thenReturn(DEVICE_ID);
 
         ioTDeviceProvider.createDevice(DEVICE_ID);
-        List<IoTDevice> devices = ioTDeviceProvider.getDevices();
+        List<IotDeviceId> devices = ioTDeviceProvider.getDevices();
         assertEquals(1, devices.size());
     }
 
