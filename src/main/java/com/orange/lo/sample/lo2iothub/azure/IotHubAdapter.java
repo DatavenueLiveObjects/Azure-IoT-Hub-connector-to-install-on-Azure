@@ -7,7 +7,6 @@
 
 package com.orange.lo.sample.lo2iothub.azure;
 
-import com.microsoft.azure.sdk.iot.device.DeviceClient;
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
 import com.microsoft.azure.sdk.iot.service.registry.Device;
 import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
@@ -23,30 +22,26 @@ public class IotHubAdapter {
 
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-    private IoTDeviceProvider ioTDeviceProvider;
-    private MessageSender messageSender;
-    private boolean deviceSynchronization;
-    private DeviceClientManager deviceClientManager;
+    private final IoTDeviceProvider ioTDeviceProvider;
+    private final boolean deviceSynchronization;
+    private final DevicesManager deviceManager;
 
-    public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider, MessageSender messageSender,
-                         DeviceClientManager deviceClientManager, boolean deviceSynchronization) {
+    public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider, DevicesManager deviceClientManager, boolean deviceSynchronization) {
         this.ioTDeviceProvider = ioTDeviceProvider;
-        this.messageSender = messageSender;
-        this.deviceClientManager = deviceClientManager;
+        this.deviceManager = deviceClientManager;
         this.deviceSynchronization = deviceSynchronization;
     }
 
     public void sendMessage(String loClientId, String message) {
-        IoTHubClient ioTHubClient = createOrGetDeviceClient(loClientId);
-        LoMessageDetails loMessageDetails = new LoMessageDetails(message, ioTHubClient);
-        messageSender.sendMessage(loMessageDetails);
+        IotHubClient ioTHubClient = createOrGetIotDeviceClient(loClientId);
+        ioTHubClient.getDeviceClientManager().sendMessage(message);
     }
 
     public void deleteDevice(String deviceId) {
         if (deviceSynchronization) {
             try {
                 synchronized (deviceId.intern()) {
-                    deviceClientManager.removeDeviceClient(deviceId);
+                    deviceManager.removeDeviceClient(deviceId);
                     ioTDeviceProvider.deleteDevice(deviceId);
                 }
             } catch (InterruptedException | IotHubClientException | TimeoutException e) {
@@ -57,9 +52,9 @@ public class IotHubAdapter {
         }
     }
 
-    public IoTHubClient createOrGetDeviceClient(String deviceId) {
+    public IotHubClient createOrGetIotDeviceClient(String deviceId) {
         synchronized (deviceId.intern()) {
-            if (!deviceClientManager.containsDeviceClient(deviceId)) {
+            if (!deviceManager.containsDeviceClient(deviceId)) {
                 LOG.debug("Creating device client that will be multiplexed: {} ", deviceId);
                 Device device = ioTDeviceProvider.getDevice(deviceId);
                 // no device in iot hub
@@ -70,14 +65,14 @@ public class IotHubAdapter {
                         throw new DeviceSynchronizationException("Device " + deviceId + " does not exist in IoT Hub");
                     }
                 }
-                deviceClientManager.createDeviceClient(device);
+                deviceManager.createDeviceClient(device);
                 LOG.debug("Device client created for {}", deviceId);
             }
-            return deviceClientManager.getDeviceClient(deviceId);
+            return deviceManager.getDeviceClient(deviceId);
         }
     }
 
-    public List<IoTDevice> getDevices() {
+    public List<IotDeviceId> getIotDeviceIds() {
         return ioTDeviceProvider.getDevices();
     }
 }

@@ -8,7 +8,7 @@
 package com.orange.lo.sample.lo2iothub;
 
 import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
-import com.orange.lo.sample.lo2iothub.azure.IoTDevice;
+import com.orange.lo.sample.lo2iothub.azure.IotDeviceId;
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sdk.rest.model.Device;
@@ -53,14 +53,14 @@ public class DeviceSynchronizationTask implements Runnable {
                 int poolSize = azureIotHubProperties.getSynchronizationThreadPoolSize();
                 ThreadPoolExecutor synchronizingExecutor = new ThreadPoolExecutor(poolSize, poolSize, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(loIds.size()));
                 List<Callable<Void>> collect = loIds.stream().map(id -> (Callable<Void>) () -> {
-                    iotHubAdapter.createOrGetDeviceClient(id);
+                    iotHubAdapter.createOrGetIotDeviceClient(id);
                     return null;
                 }).collect(Collectors.toList());
                 synchronizingExecutor.invokeAll(collect);
                 synchronizingExecutor.shutdown();
             }
-            Set<String> iotIds = iotHubAdapter.getDevices().stream()
-                    .map(IoTDevice::getId)
+            Set<String> iotIds = iotHubAdapter.getIotDeviceIds().stream()
+                    .map(IotDeviceId::getId)
                     .collect(Collectors.toSet());
             iotIds.removeAll(loIds);
             iotIds.forEach(id -> {

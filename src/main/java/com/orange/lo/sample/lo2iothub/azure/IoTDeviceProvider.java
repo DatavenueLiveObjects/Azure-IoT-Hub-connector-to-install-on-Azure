@@ -1,9 +1,9 @@
-/** 
-* Copyright (c) Orange. All Rights Reserved.
-* 
-* This source code is licensed under the MIT license found in the 
-* LICENSE file in the root directory of this source tree. 
-*/
+/**
+ * Copyright (c) Orange. All Rights Reserved.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 package com.orange.lo.sample.lo2iothub.azure;
 
@@ -34,7 +34,7 @@ public class IoTDeviceProvider {
     private RegistryClient registryClient;
 
     public IoTDeviceProvider(TwinClient twinClient, RegistryClient registryClient, String tagPlatformKey,
-            String tagPlatformValue) {
+                             String tagPlatformValue) {
         this.twinClient = twinClient;
         this.registryClient = registryClient;
         this.tagPlatformKey = tagPlatformKey;
@@ -51,13 +51,13 @@ public class IoTDeviceProvider {
         }
     }
 
-    public List<IoTDevice> getDevices() {
-        List<IoTDevice> list = new ArrayList<>();
+    public List<IotDeviceId> getDevices() {
+        List<IotDeviceId> list = new ArrayList<>();
         try {
             TwinQueryResponse query = twinClient
                     .query("SELECT * FROM devices WHERE tags." + tagPlatformKey + "='" + tagPlatformValue + "'");
             while (query.hasNext()) {
-                list.add(new IoTDevice(query.next().getDeviceId()));
+                list.add(new IotDeviceId(query.next().getDeviceId()));
             }
             return list;
         } catch (IotHubException | IOException e) {

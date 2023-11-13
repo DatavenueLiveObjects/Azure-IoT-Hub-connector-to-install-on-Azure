@@ -14,6 +14,7 @@ import com.microsoft.azure.sdk.iot.service.registry.RegistryClient;
 import com.microsoft.azure.sdk.iot.service.twin.TwinClient;
 import com.orange.lo.sample.lo2iothub.azure.*;
 import com.orange.lo.sample.lo2iothub.exceptions.InitializationException;
+import com.orange.lo.sample.lo2iothub.exceptions.SendMessageException;
 import com.orange.lo.sample.lo2iothub.lo.LiveObjectsProperties;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
@@ -33,6 +34,7 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
+import net.jodah.failsafe.Fallback;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.slf4j.Logger;
@@ -60,7 +62,7 @@ public class ApplicationConfig {
     private ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
 
     public ApplicationConfig(Counters counterProvider, ApplicationProperties applicationProperties, MappingJackson2HttpMessageConverter springJacksonConverter,
-            ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint) {
+                             ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint) {
         this.counters = counterProvider;
         this.applicationProperties = applicationProperties;
         this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
@@ -88,16 +90,18 @@ public class ApplicationConfig {
             azureIotHubList.forEach(azureIotHubProperties -> {
                 try {
                     LOG.debug("Initializing for {} ", azureIotHubProperties.getIotHostName());
-                    MessageSender messageSender = new MessageSender(counters);
-                    messageSender.setMessageRetryPolicy(messageRetryPolicy());
+//                    MessageSender messageSender = new MessageSender(counters);
+//                    MessagesCache messagesCache = new MessagesCache(messageSender);
+//                    messageSender.setMessageRetryPolicy(messageRetryPolicy());
+//                    messageSender.setMessagesCache(messagesCache);
                     IoTDeviceProvider ioTDeviceProvider = createIotDeviceProvider(azureIotHubProperties);
 
-                    DeviceClientManager deviceClientManager = new DeviceClientManager(
-                            azureIotHubProperties.getIotHostName(), azureIotHubProperties.getSynchronizationPeriod(), connectorHealthActuatorEndpoint);
-                    
+                    DevicesManager deviceClientManager = new DevicesManager(
+                            azureIotHubProperties.getIotHostName(), azureIotHubProperties.getSynchronizationPeriod(), connectorHealthActuatorEndpoint, counters, messageRetryPolicy(), sendMessageFallback());
+
                     IotHubAdapter iotHubAdapter = new IotHubAdapter(
-                            ioTDeviceProvider, 
-                            messageSender, 
+                            ioTDeviceProvider,
+//                            messageSender,
                             deviceClientManager,
                             liveObjectsProperties.isDeviceSynchronization()
                     );
@@ -108,7 +112,7 @@ public class ApplicationConfig {
                     connectorHealthActuatorEndpoint.addLoApiClient(loApiClient);
                     LoAdapter loAdapter = new LoAdapter(loApiClient, liveObjectsProperties.getPageSize(),
                             groupRetryPolicy, deviceRetryPolicy);
-                    
+
                     LoCommandSender loCommandSender = new LoCommandSender(loApiClient, objectMapper, commandRetryPolicy);
                     deviceClientManager.setLoCommandSender(loCommandSender);
 
@@ -138,7 +142,7 @@ public class ApplicationConfig {
     }
 
     private LOApiClientParameters loApiClientParameters(LiveObjectsProperties loProperties,
-            AzureIotHubProperties azureIotHubProperties, IotHubAdapter iotHubAdapter, boolean deviceSynchronization) {
+                                                        AzureIotHubProperties azureIotHubProperties, IotHubAdapter iotHubAdapter, boolean deviceSynchronization) {
 
         List<String> topics = Lists.newArrayList(azureIotHubProperties.getLoMessagesTopic());
         if (loProperties.isDeviceSynchronization()) {
@@ -159,13 +163,17 @@ public class ApplicationConfig {
                 .build();
     }
 
+    public Fallback<Void> sendMessageFallback() {
+        return Fallback.ofException(e -> new SendMessageException(e.getLastFailure()));
+    }
+
     public RetryPolicy<Void> messageRetryPolicy() {
         return new RetryPolicy<Void>().handleIf(e -> e instanceof IllegalStateException)
                 .withMaxAttempts(-1)
                 .withBackoff(1, 60, ChronoUnit.SECONDS)
-                .withMaxDuration(Duration.ofMinutes(60));
+                .withMaxDuration(Duration.ofMinutes(50));
     }
-    
+
     public RetryPolicy<Void> restCommandRetryPolicy() {
         return configureRetryPolicy(new RetryPolicy<>());
     }
@@ -183,7 +191,7 @@ public class ApplicationConfig {
                 .withMaxAttempts(-1)
                 .withBackoff(1, 60, ChronoUnit.SECONDS)
                 .withMaxDuration(Duration.ofHours(1)
-        );
+                );
     }
 
     private boolean isTooManyRequestsException(Throwable e) {

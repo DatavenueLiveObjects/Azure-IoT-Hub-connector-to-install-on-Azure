@@ -14,7 +14,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
-import com.orange.lo.sample.lo2iothub.azure.IoTDevice;
+import com.orange.lo.sample.lo2iothub.azure.IotDeviceId;
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sdk.rest.model.Device;
@@ -41,8 +41,8 @@ class DeviceSynchronizationTaskTest {
             new Device().withId("lo-device-id-01").withName("lo-device-name-01"),
             new Device().withId("lo-device-id-02").withName("lo-device-name-02")
     );
-    public static final List<IoTDevice> IOT_DEVICES = Collections.singletonList(
-            new IoTDevice("lo-device-id-03")
+    public static final List<IotDeviceId> IOT_DEVICES = Collections.singletonList(
+            new IotDeviceId("lo-device-id-03")
     );
 
     @Mock
@@ -54,7 +54,7 @@ class DeviceSynchronizationTaskTest {
     @BeforeEach
     void setUp() {
         when(loAdapter.getDevices(LO_DEVICES_GROUP)).thenReturn(LO_DEVICES);
-        when(iotHubAdapter.getDevices()).thenReturn(IOT_DEVICES);
+        when(iotHubAdapter.getIotDeviceIds()).thenReturn(IOT_DEVICES);
 
         AzureIotHubProperties azureIotHubProperties = new AzureIotHubProperties();
         azureIotHubProperties.setLoDevicesGroup(LO_DEVICES_GROUP);
@@ -69,8 +69,8 @@ class DeviceSynchronizationTaskTest {
         executor.awaitTermination(2, TimeUnit.SECONDS);
 
         verify(loAdapter, times(1)).getDevices(LO_DEVICES_GROUP);
-        verify(iotHubAdapter, times(2)).createOrGetDeviceClient(anyString());
-        verify(iotHubAdapter, times(1)).getDevices();
+        verify(iotHubAdapter, times(2)).createOrGetIotDeviceClient(anyString());
+        verify(iotHubAdapter, times(1)).getIotDeviceIds();
         verify(iotHubAdapter, times(1)).deleteDevice(anyString());
         verify(loAdapter, never()).startListeningForMessages();
     }

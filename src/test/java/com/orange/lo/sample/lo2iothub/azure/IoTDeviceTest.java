@@ -17,7 +17,7 @@ class IoTDeviceTest {
 
     @Test
     void shouldProperlyReturnIoTDeviceId() {
-        IoTDevice ioTDevice = new IoTDevice(DEVICE_ID);
+        IotDeviceId ioTDevice = new IotDeviceId(DEVICE_ID);
         assertEquals(DEVICE_ID, ioTDevice.getId());
     }
 }
