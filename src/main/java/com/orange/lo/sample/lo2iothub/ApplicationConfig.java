@@ -107,7 +107,7 @@ public class ApplicationConfig {
                     );
 
                     LOApiClientParameters loApiClientParameters = loApiClientParameters(liveObjectsProperties,
-                            azureIotHubProperties, iotHubAdapter, liveObjectsProperties.isDeviceSynchronization());
+                            azureIotHubProperties, iotHubAdapter);
                     LOApiClient loApiClient = new LOApiClient(loApiClientParameters);
                     connectorHealthActuatorEndpoint.addLoApiClient(loApiClient);
                     LoAdapter loAdapter = new LoAdapter(loApiClient, liveObjectsProperties.getPageSize(),
@@ -125,14 +125,14 @@ public class ApplicationConfig {
                     }
 
                     loAdapter.startListeningForMessages();
-                } catch (IOException | IotHubClientException e) {
+                } catch (IotHubClientException e) {
                     throw new InitializationException(e);
                 }
             });
         });
     }
 
-    private IoTDeviceProvider createIotDeviceProvider(AzureIotHubProperties azureIotHubProperties) throws IOException {
+    private IoTDeviceProvider createIotDeviceProvider(AzureIotHubProperties azureIotHubProperties) {
         String iotConnectionString = azureIotHubProperties.getIotConnectionString();
         TwinClient twinClient = new TwinClient(iotConnectionString);
         RegistryClient registryClient = new RegistryClient(iotConnectionString);
@@ -142,7 +142,7 @@ public class ApplicationConfig {
     }
 
     private LOApiClientParameters loApiClientParameters(LiveObjectsProperties loProperties,
-                                                        AzureIotHubProperties azureIotHubProperties, IotHubAdapter iotHubAdapter, boolean deviceSynchronization) {
+                                                        AzureIotHubProperties azureIotHubProperties, IotHubAdapter iotHubAdapter) {
 
         List<String> topics = Lists.newArrayList(azureIotHubProperties.getLoMessagesTopic());
         if (loProperties.isDeviceSynchronization()) {

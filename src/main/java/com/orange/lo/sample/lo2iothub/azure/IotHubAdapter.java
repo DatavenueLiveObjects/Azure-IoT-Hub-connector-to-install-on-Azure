@@ -33,8 +33,8 @@ public class IotHubAdapter {
     }
 
     public void sendMessage(String loClientId, String message) {
-        IotHubClient ioTHubClient = createOrGetIotDeviceClient(loClientId);
-        ioTHubClient.getDeviceClientManager().sendMessage(message);
+        DeviceClientManager ioTHubClient = createOrGetIotDeviceClient(loClientId);
+        ioTHubClient.sendMessage(message);
     }
 
     public void deleteDevice(String deviceId) {
@@ -52,7 +52,7 @@ public class IotHubAdapter {
         }
     }
 
-    public IotHubClient createOrGetIotDeviceClient(String deviceId) {
+    public DeviceClientManager createOrGetIotDeviceClient(String deviceId) {
         synchronized (deviceId.intern()) {
             if (!deviceManager.containsDeviceClient(deviceId)) {
                 LOG.debug("Creating device client that will be multiplexed: {} ", deviceId);
