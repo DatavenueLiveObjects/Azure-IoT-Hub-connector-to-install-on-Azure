@@ -2,6 +2,7 @@ package com.orange.lo.sample.lo2iothub.azure;
 
 import com.microsoft.azure.sdk.iot.device.*;
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
+import com.microsoft.azure.sdk.iot.device.exceptions.MultiplexingClientRegistrationException;
 import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
 import net.jodah.failsafe.Failsafe;
@@ -14,6 +15,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Phaser;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -29,6 +31,7 @@ public class MultiplexingClientManager implements IotHubConnectionStatusChangeCa
     private final int multiplexingClientId;
     private IotHubConnectionStatus multiplexedConnectionStatus;
     private List<DeviceClientManager> deviceClientManagersToRegister = new ArrayList<DeviceClientManager>();
+    private Phaser phaser = new Phaser(1);
     private final Object operationLock = new Object();
     private ScheduledExecutorService registerTaskScheduler = Executors.newScheduledThreadPool(1);
 
@@ -65,8 +68,11 @@ public class MultiplexingClientManager implements IotHubConnectionStatusChangeCa
     public void registerDeviceClientManager(DeviceClientManager deviceClientManager) {
         synchronized (this.operationLock) {
             LOG.info("Adding device client {} to be registered by multiplexing client: {}", deviceClientManager.getDeviceClient().getConfig().getDeviceId(), multiplexingClientId);
+            phaser.register();
             this.deviceClientManagersToRegister.add(deviceClientManager);
         }
+        phaser.arriveAndAwaitAdvance();
+        phaser.arriveAndDeregister();
     }
 
     public boolean isDeviceRegistered(String deviceClientId) {
@@ -100,6 +106,8 @@ public class MultiplexingClientManager implements IotHubConnectionStatusChangeCa
                     deviceClientManagersToRegister.clear();
                 } catch (InterruptedException | IotHubClientException e) {
                     LOG.error("Error while registering device clients for multiplexing client: {}", multiplexingClientId, e);
+                } finally {
+                    phaser.arrive();
                 }
             }
         }
