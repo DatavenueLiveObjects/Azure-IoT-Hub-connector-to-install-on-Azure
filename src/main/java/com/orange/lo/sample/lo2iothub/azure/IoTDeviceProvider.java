@@ -51,6 +51,17 @@ public class IoTDeviceProvider {
         }
     }
 
+    public boolean deviceExists(String deviceId) {
+        try {
+            registryClient.getDevice(deviceId);
+            return true;
+        } catch (IotHubNotFoundException e) {
+            return false;
+        } catch (IotHubException | IOException e) {
+            throw new IotDeviceProviderException("Error while retrieving device: " + deviceId, e);
+        }
+    }
+
     public List<IotDeviceId> getDevices() {
         List<IotDeviceId> list = new ArrayList<>();
         try {

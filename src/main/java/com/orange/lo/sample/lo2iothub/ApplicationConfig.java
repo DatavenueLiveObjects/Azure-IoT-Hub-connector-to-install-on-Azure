@@ -90,18 +90,13 @@ public class ApplicationConfig {
             azureIotHubList.forEach(azureIotHubProperties -> {
                 try {
                     LOG.debug("Initializing for {} ", azureIotHubProperties.getIotHostName());
-//                    MessageSender messageSender = new MessageSender(counters);
-//                    MessagesCache messagesCache = new MessagesCache(messageSender);
-//                    messageSender.setMessageRetryPolicy(messageRetryPolicy());
-//                    messageSender.setMessagesCache(messagesCache);
                     IoTDeviceProvider ioTDeviceProvider = createIotDeviceProvider(azureIotHubProperties);
 
                     DevicesManager deviceClientManager = new DevicesManager(
-                            azureIotHubProperties.getIotHostName(), azureIotHubProperties.getSynchronizationPeriod(), connectorHealthActuatorEndpoint, counters, messageRetryPolicy(), sendMessageFallback());
+                            azureIotHubProperties.getIotHostName(), azureIotHubProperties.getSynchronizationPeriod(), connectorHealthActuatorEndpoint, ioTDeviceProvider, counters, messageRetryPolicy(), sendMessageFallback());
 
                     IotHubAdapter iotHubAdapter = new IotHubAdapter(
                             ioTDeviceProvider,
-//                            messageSender,
                             deviceClientManager,
                             liveObjectsProperties.isDeviceSynchronization()
                     );

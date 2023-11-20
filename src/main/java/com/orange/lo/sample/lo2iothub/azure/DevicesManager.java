@@ -5,10 +5,8 @@ import com.microsoft.azure.sdk.iot.service.registry.Device;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
@@ -19,24 +17,24 @@ import net.jodah.failsafe.RetryPolicy;
 public class DevicesManager {
 
     private List<MultiplexingClientManager> multiplexingClientManagerList;
-    private Map<String, DeviceClientManager> ioTHubClientMap;
     private LoCommandSender loCommandSender;
 
     private String host;
     private final int period;
     private final ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
+    private final IoTDeviceProvider ioTDeviceProvider;
     private Counters counterProvider;
     private RetryPolicy<Void> messageRetryPolicy;
     private Fallback<Void> sendMessageFallback;
 
-    public DevicesManager(String host, int period, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint, Counters counterProvider, RetryPolicy<Void> messageRetryPolicy, Fallback<Void> sendMessageFallback) throws IotHubClientException {
+    public DevicesManager(String host, int period, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider, RetryPolicy<Void> messageRetryPolicy, Fallback<Void> sendMessageFallback) throws IotHubClientException {
         this.host = host;
         this.period = period;
         this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
+        this.ioTDeviceProvider = ioTDeviceProvider;
         this.counterProvider = counterProvider;
         this.messageRetryPolicy = messageRetryPolicy;
         this.sendMessageFallback = sendMessageFallback;
-        this.ioTHubClientMap = Collections.synchronizedMap(new HashMap<>());
         this.multiplexingClientManagerList = Collections.synchronizedList(new LinkedList<>());
     }
     public void setLoCommandSender(LoCommandSender loCommandSender) {
@@ -44,7 +42,12 @@ public class DevicesManager {
     }
 
     public synchronized boolean containsDeviceClient(String deviceClientId) {
-        return ioTHubClientMap.containsKey(deviceClientId);
+        for (MultiplexingClientManager multiplexingClientManager : multiplexingClientManagerList) {
+            if (multiplexingClientManager.deviceExisted(deviceClientId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public synchronized void createDeviceClient(Device device) {
@@ -52,20 +55,21 @@ public class DevicesManager {
         MultiplexingClientManager freeMultiplexingClientManager = getFreeMultiplexingClientManager();
         deviceClientManager.setMultiplexingClientManager(freeMultiplexingClientManager);
         freeMultiplexingClientManager.registerDeviceClientManager(deviceClientManager);
-
-        String deviceId = deviceClientManager.getDeviceClient().getConfig().getDeviceId();
-        ioTHubClientMap.put(deviceId, deviceClientManager);
     }
 
-    public synchronized DeviceClientManager getDeviceClient(String deviceClientId) {
-        return ioTHubClientMap.get(deviceClientId);
+    public synchronized DeviceClientManager getDeviceClientManager(String deviceClientId) {
+        for (MultiplexingClientManager multiplexingClientManager : multiplexingClientManagerList) {
+            if (multiplexingClientManager.deviceExisted(deviceClientId)) {
+                return multiplexingClientManager.getDeviceClientManager(deviceClientId);
+            }
+        }
+        return null;
     }
 
     public synchronized void removeDeviceClient(String deviceClientId) throws InterruptedException, IotHubClientException, TimeoutException {
         for (MultiplexingClientManager multiplexingClientManager : multiplexingClientManagerList) {
-            if (multiplexingClientManager.isDeviceRegistered(deviceClientId)) {
-                multiplexingClientManager.unregisterDeviceClient(ioTHubClientMap.get(deviceClientId));
-                ioTHubClientMap.remove(deviceClientId);
+            if (multiplexingClientManager.deviceExisted(deviceClientId)) {
+                multiplexingClientManager.unregisterDeviceClient(deviceClientId);
             }
         }
     }
@@ -76,7 +80,7 @@ public class DevicesManager {
                 return multiplexingClientManager;
             }
         }
-        MultiplexingClientManager freeMultiplexingClientManager = new MultiplexingClientManager(host, period, connectorHealthActuatorEndpoint);
+        MultiplexingClientManager freeMultiplexingClientManager = new MultiplexingClientManager(host, period, connectorHealthActuatorEndpoint, ioTDeviceProvider);
         multiplexingClientManagerList.add(freeMultiplexingClientManager);
         return freeMultiplexingClientManager;
     }
