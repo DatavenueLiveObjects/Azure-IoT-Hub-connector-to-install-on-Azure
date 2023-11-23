@@ -34,6 +34,7 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
     private final DeviceClient deviceClient;
     private final LoCommandSender loCommandSender;
     private MultiplexingClientManager multiplexingClientManager;
+    private final IoTDeviceProvider ioTDeviceProvider;
 
     private static final Map<String, MessageSentCallback> callbacksCache = new ConcurrentHashMap<>();
 
@@ -41,7 +42,8 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
     private RetryPolicy<Void> messageRetryPolicy;
     private Fallback<Void> sendMessageFallback;
 
-    public DeviceClientManager(Device device, String host, LoCommandSender loCommandSender, Counters counterProvider, RetryPolicy<Void> messageRetryPolicy, Fallback<Void> sendMessageFallback) {
+    public DeviceClientManager(Device device, String host, LoCommandSender loCommandSender, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider, RetryPolicy<Void> messageRetryPolicy, Fallback<Void> sendMessageFallback) {
+        this.ioTDeviceProvider = ioTDeviceProvider;
         this.deviceClient = new DeviceClient(getConnectionString(device, host), IotHubClientProtocol.AMQPS);
         this.deviceClient.setMessageCallback(this, null);
         this.deviceClient.setConnectionStatusChangeCallback(this, null);
@@ -83,6 +85,7 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
                 if (multiplexingClientManager.getMultiplexedConnectionStatus() == IotHubConnectionStatus.CONNECTED
                         // we also do not want to reconnect device client in loop because of many messages
                         && System.currentTimeMillis() - lastReestablishSessionTimestamp > REESTABLISH_SESSION_DELAY) {
+
                     Failsafe.with(getReconnectRetryPolicy()).run(() -> {
                         LOG.info("Reconnecting device client: {}", deviceClient.getConfig().getDeviceId());
                         if (multiplexingClientManager.isDeviceRegistered(deviceClient.getConfig().getDeviceId())) {
@@ -90,9 +93,13 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
                             multiplexingClientManager.unregisterDeviceClient(this);
                             LOG.info("Unregister device client: {} success", deviceClient.getConfig().getDeviceId());
                         }
-                        LOG.info("Register device client: {}", deviceClient.getConfig().getDeviceId());
-                        multiplexingClientManager.registerDeviceClientManager(this);
-                        LOG.info("Register device client: {} success", deviceClient.getConfig().getDeviceId());
+                        if (ioTDeviceProvider.deviceExists(deviceClient.getConfig().getDeviceId())) {
+                            LOG.info("Register device client: {}", deviceClient.getConfig().getDeviceId());
+                            multiplexingClientManager.registerDeviceClientManager(this);
+                            LOG.info("Register device client: {} success", deviceClient.getConfig().getDeviceId());
+                        } else {
+                            LOG.info("Device client: {} not exists in IoT Hub", deviceClient.getConfig().getDeviceId());
+                        }
                         lastReestablishSessionTimestamp = System.currentTimeMillis();
                     });
                 }

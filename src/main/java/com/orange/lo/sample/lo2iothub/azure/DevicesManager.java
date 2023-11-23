@@ -51,7 +51,7 @@ public class DevicesManager {
     }
 
     public synchronized void createDeviceClient(Device device) {
-        DeviceClientManager deviceClientManager = new DeviceClientManager(device, host, loCommandSender, counterProvider, messageRetryPolicy, sendMessageFallback);
+        DeviceClientManager deviceClientManager = new DeviceClientManager(device, host, loCommandSender, ioTDeviceProvider, counterProvider, messageRetryPolicy, sendMessageFallback);
         MultiplexingClientManager freeMultiplexingClientManager = getFreeMultiplexingClientManager();
         deviceClientManager.setMultiplexingClientManager(freeMultiplexingClientManager);
         freeMultiplexingClientManager.registerDeviceClientManager(deviceClientManager);
