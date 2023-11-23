@@ -27,7 +27,6 @@ import com.orange.lo.sdk.rest.model.Group;
 
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.invoke.MethodHandles;
 import java.time.Duration;
@@ -111,13 +110,11 @@ public class ApplicationConfig {
                     LoCommandSender loCommandSender = new LoCommandSender(loApiClient, objectMapper, commandRetryPolicy);
                     deviceClientManager.setLoCommandSender(loCommandSender);
 
-                    if (liveObjectsProperties.isDeviceSynchronization()) {
-                        DeviceSynchronizationTask deviceSynchronizationTask = new DeviceSynchronizationTask(
-                                iotHubAdapter, loAdapter, azureIotHubProperties);
-                        int synchronizationDeviceInterval = liveObjectsProperties.getSynchronizationDeviceInterval();
-                        Duration period = Duration.ofSeconds(synchronizationDeviceInterval);
-                        taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, period);
-                    }
+                    DeviceSynchronizationTask deviceSynchronizationTask = new DeviceSynchronizationTask(
+                            iotHubAdapter, loAdapter, azureIotHubProperties, liveObjectsProperties.isDeviceSynchronization());
+                    int synchronizationDeviceInterval = liveObjectsProperties.getSynchronizationDeviceInterval();
+                    Duration period = Duration.ofSeconds(synchronizationDeviceInterval);
+                    taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, period);
 
                     loAdapter.startListeningForMessages();
                 } catch (IotHubClientException e) {

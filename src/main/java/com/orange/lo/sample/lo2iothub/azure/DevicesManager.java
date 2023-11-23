@@ -4,18 +4,24 @@ import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
 import com.microsoft.azure.sdk.iot.service.registry.Device;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 
+import java.lang.invoke.MethodHandles;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
 import net.jodah.failsafe.Fallback;
 import net.jodah.failsafe.RetryPolicy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DevicesManager {
 
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     private List<MultiplexingClientManager> multiplexingClientManagerList;
     private LoCommandSender loCommandSender;
 
@@ -37,6 +43,7 @@ public class DevicesManager {
         this.sendMessageFallback = sendMessageFallback;
         this.multiplexingClientManagerList = Collections.synchronizedList(new LinkedList<>());
     }
+
     public void setLoCommandSender(LoCommandSender loCommandSender) {
         this.loCommandSender = loCommandSender;
     }
@@ -83,5 +90,25 @@ public class DevicesManager {
         MultiplexingClientManager freeMultiplexingClientManager = new MultiplexingClientManager(host, period, connectorHealthActuatorEndpoint, ioTDeviceProvider);
         multiplexingClientManagerList.add(freeMultiplexingClientManager);
         return freeMultiplexingClientManager;
+    }
+
+    public void keepDeviceClientsOnlyForTheseDevices(Set<String> idsOfDeviceForWhichClientsShouldBeKept) {
+        multiplexingClientManagerList.forEach(mcm -> unregisterNonExistentDevices(idsOfDeviceForWhichClientsShouldBeKept, mcm));
+    }
+
+    private void unregisterNonExistentDevices(Set<String> idsOfDeviceForWhichClientsShouldBeKept, MultiplexingClientManager mcm) {
+        Set<String> mcmDeviceIDs = mcm.idsOfDevicesRegisteredAndWaitingForRegistration();
+        List<String> deviceIDsToUnregister = mcmDeviceIDs.stream()
+                .filter(s -> !idsOfDeviceForWhichClientsShouldBeKept.contains(s))
+                .collect(Collectors.toList());
+
+        for (String idOfNonExistentDevice : deviceIDsToUnregister) {
+            try {
+                LOG.info("Unregistering non-existent device {}", idOfNonExistentDevice);
+                this.removeDeviceClient(idOfNonExistentDevice);
+            } catch (Exception e) {
+                LOG.error("Unable to unregister a non-existent device {}: {}: {}", idOfNonExistentDevice, e.getClass(), e.getMessage());
+            }
+        }
     }
 }

@@ -13,6 +13,7 @@ import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
 
 import java.lang.invoke.MethodHandles;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
@@ -73,6 +74,10 @@ public class IotHubAdapter {
     }
 
     public List<IotDeviceId> getIotDeviceIds() {
-        return ioTDeviceProvider.getDevices();
+        return ioTDeviceProvider.getDevices(deviceSynchronization);
+    }
+
+    public void removeDeviceClientsForNonExistentDevices(Set<String> existingDeviceIDs) {
+        devicesManager.keepDeviceClientsOnlyForTheseDevices(existingDeviceIDs);
     }
 }

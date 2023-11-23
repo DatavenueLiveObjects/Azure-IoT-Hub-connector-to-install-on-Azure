@@ -62,11 +62,15 @@ public class IoTDeviceProvider {
         }
     }
 
-    public List<IotDeviceId> getDevices() {
+    public List<IotDeviceId> getDevices(boolean queryByTags) {
         List<IotDeviceId> list = new ArrayList<>();
         try {
+            String selectingQuery = "SELECT * FROM devices";
+            if(queryByTags) {
+                selectingQuery = "WHERE tags." + tagPlatformKey + "='" + tagPlatformValue + "'";
+            }
             TwinQueryResponse query = twinClient
-                    .query("SELECT * FROM devices WHERE tags." + tagPlatformKey + "='" + tagPlatformValue + "'");
+                    .query(selectingQuery);
             while (query.hasNext()) {
                 list.add(new IotDeviceId(query.next().getDeviceId()));
             }

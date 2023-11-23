@@ -22,6 +22,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,45 +33,85 @@ public class DeviceSynchronizationTask implements Runnable {
     private final IotHubAdapter iotHubAdapter;
     private final LoAdapter loAdapter;
     private final AzureIotHubProperties azureIotHubProperties;
+    private final boolean deviceSynchronization;
 
-    public DeviceSynchronizationTask(IotHubAdapter iotHubAdapter, LoAdapter loAdapter, AzureIotHubProperties azureIotHubProperties) {
+    public DeviceSynchronizationTask(IotHubAdapter iotHubAdapter, LoAdapter loAdapter,
+                                     AzureIotHubProperties azureIotHubProperties, boolean deviceSynchronization) {
         this.iotHubAdapter = iotHubAdapter;
         this.loAdapter = loAdapter;
         this.azureIotHubProperties = azureIotHubProperties;
+        this.deviceSynchronization = deviceSynchronization;
     }
 
     @Override
     public void run() {
-
-        LOG.debug("Synchronizing devices for group {}", azureIotHubProperties.getLoDevicesGroup());
         try {
-
-            Set<String> loIds = loAdapter.getDevices(azureIotHubProperties.getLoDevicesGroup()).stream()
-                    .map(Device::getId)
-                    .collect(Collectors.toSet());
-
-            if (!loIds.isEmpty()) {
-                int poolSize = azureIotHubProperties.getSynchronizationThreadPoolSize();
-                ThreadPoolExecutor synchronizingExecutor = new ThreadPoolExecutor(poolSize, poolSize, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(loIds.size()));
-                List<Callable<Void>> collect = loIds.stream().map(id -> (Callable<Void>) () -> {
-                    iotHubAdapter.createOrGetIotDeviceClient(id);
-                    return null;
-                }).collect(Collectors.toList());
-                synchronizingExecutor.invokeAll(collect);
-                synchronizingExecutor.shutdown();
+            if (isDeviceSynchronizationEnabled()) {
+                LOG.debug("Synchronizing devices for group {}", azureIotHubProperties.getLoDevicesGroup());
+                createDeviceClientsAndSynchronizeDevicesFromLOToIoTHub();
+            } else {
+                LOG.debug("Synchronizing device clients for group {}", azureIotHubProperties.getLoDevicesGroup());
+                createOnlyDeviceClientsForDevicesExistingInIoTHub();
             }
-            Set<String> iotIds = iotHubAdapter.getIotDeviceIds().stream()
-                    .map(IotDeviceId::getId)
-                    .collect(Collectors.toSet());
-            iotIds.removeAll(loIds);
-            iotIds.forEach(id -> {
-                LOG.debug("remove from cache and iot device {}", id);
-                iotHubAdapter.deleteDevice(id);
-            });
-
         } catch (Exception e) {
-            LOG.error("Error while synchronizing devices", e);
+            LOG.error("Error while synchronizing devices/creating device clients", e);
         }
     }
 
+    private boolean isDeviceSynchronizationEnabled() {
+        return deviceSynchronization;
+    }
+
+    private void createDeviceClientsAndSynchronizeDevicesFromLOToIoTHub() throws InterruptedException {
+        Set<String> loIds = getDeviceIDsFromLO();
+        if (!loIds.isEmpty()) {
+            createOrGerDeviceClients(loIds);
+        }
+        Set<String> iotIds = getDeviceIDsFromIoTHub();
+        iotIds.removeAll(loIds);
+        iotIds.forEach(id -> {
+            LOG.debug("remove from cache and iot device {}", id);
+            iotHubAdapter.deleteDevice(id);
+        });
+    }
+
+    @NotNull
+    private Set<String> getDeviceIDsFromLO() {
+        return loAdapter.getDevices(azureIotHubProperties.getLoDevicesGroup()).stream()
+                .map(Device::getId)
+                .collect(Collectors.toSet());
+    }
+
+    private void createOrGerDeviceClients(Set<String> loIds) throws InterruptedException {
+        int poolSize = azureIotHubProperties.getSynchronizationThreadPoolSize();
+        ArrayBlockingQueue<Runnable> workQueue = new ArrayBlockingQueue<>(loIds.size());
+        ThreadPoolExecutor synchronizingExecutor = new ThreadPoolExecutor(poolSize, poolSize, 10, TimeUnit.SECONDS, workQueue);
+        List<Callable<Void>> collect = loIds.stream().map(id -> (Callable<Void>) () -> {
+            iotHubAdapter.createOrGetIotDeviceClient(id);
+            return null;
+        }).collect(Collectors.toList());
+        synchronizingExecutor.invokeAll(collect);
+        synchronizingExecutor.shutdown();
+    }
+
+    @NotNull
+    private Set<String> getDeviceIDsFromIoTHub() {
+        return iotHubAdapter.getIotDeviceIds().stream()
+                .map(IotDeviceId::getId)
+                .collect(Collectors.toSet());
+    }
+
+    private void createOnlyDeviceClientsForDevicesExistingInIoTHub() throws InterruptedException {
+        Set<String> loIds = getDeviceIDsFromLO();
+        Set<String> iotIds = getDeviceIDsFromIoTHub();
+        LOG.info("Number of devices in LO: {}", loIds.size());
+        LOG.info("Number of devices in IoT Hub: {}", iotIds.size());
+
+        loIds.retainAll(iotIds);
+        LOG.info("Number of devices from LO that exist in IoT Hub: {}", iotIds.size());
+        if (!loIds.isEmpty()) {
+            createOrGerDeviceClients(loIds);
+            iotHubAdapter.removeDeviceClientsForNonExistentDevices(loIds);
+        }
+    }
 }

@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class MultiplexingClientManager implements IotHubConnectionStatusChangeCallback {
 
@@ -206,5 +207,15 @@ public class MultiplexingClientManager implements IotHubConnectionStatusChangeCa
 
     public IotHubConnectionStatus getMultiplexedConnectionStatus() {
         return multiplexedConnectionStatus;
+    }
+
+    public Set<String> idsOfDevicesRegisteredAndWaitingForRegistration() {
+        Stream<String> idsOfDevicesWaitingForRegistration = deviceClientManagersToRegister.stream()
+                .map(DeviceClientManager::getDeviceId);
+
+        Stream<String> idsOfDevicesRegistered = multiplexedDeviceClientManagers.keySet().stream();
+
+        return Stream.concat(idsOfDevicesWaitingForRegistration, idsOfDevicesRegistered)
+                .collect(Collectors.toSet());
     }
 }
