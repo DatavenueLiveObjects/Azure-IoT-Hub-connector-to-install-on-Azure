@@ -53,7 +53,6 @@ class DeviceSynchronizationTaskTest {
 
     @BeforeEach
     void setUp() {
-        when(loAdapter.getDevices(LO_DEVICES_GROUP)).thenReturn(LO_DEVICES);
         when(iotHubAdapter.getIotDeviceIds()).thenReturn(IOT_DEVICES);
     }
 
@@ -66,6 +65,7 @@ class DeviceSynchronizationTaskTest {
 
     @Test
     void shouldSynchronizeDevicesBetweenLApiClientAndIotHubAdapterWhenDeviceSynchronizationIsOn() throws InterruptedException {
+        when(loAdapter.getDevices(LO_DEVICES_GROUP)).thenReturn(LO_DEVICES);
         ExecutorService executor = Executors.newCachedThreadPool();
         DeviceSynchronizationTask deviceSynchronizationTask = getDeviceSynchronizationTask(true, LO_DEVICES_GROUP);
         executor.execute(deviceSynchronizationTask);
@@ -80,6 +80,7 @@ class DeviceSynchronizationTaskTest {
 
     @Test
     void shouldSynchronizeDevicesBetweenLApiClientAndIotHubAdapterWhenDeviceSynchronizationIsOff() throws InterruptedException {
+        when(loAdapter.getDevices(null)).thenReturn(LO_DEVICES);
         ExecutorService executor = Executors.newCachedThreadPool();
         DeviceSynchronizationTask deviceSynchronizationTask = getDeviceSynchronizationTask(false, null);
         executor.execute(deviceSynchronizationTask);
