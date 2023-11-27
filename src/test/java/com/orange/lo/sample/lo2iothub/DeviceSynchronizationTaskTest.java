@@ -57,9 +57,9 @@ class DeviceSynchronizationTaskTest {
         when(iotHubAdapter.getIotDeviceIds()).thenReturn(IOT_DEVICES);
     }
 
-    private DeviceSynchronizationTask getDeviceSynchronizationTask(boolean deviceSynchronization) {
+    private DeviceSynchronizationTask getDeviceSynchronizationTask(boolean deviceSynchronization, String loDevicesGroup) {
         AzureIotHubProperties azureIotHubProperties = new AzureIotHubProperties();
-        azureIotHubProperties.setLoDevicesGroup(LO_DEVICES_GROUP);
+        azureIotHubProperties.setLoDevicesGroup(loDevicesGroup);
         azureIotHubProperties.setSynchronizationThreadPoolSize(SYNCHRONIZATION_POOL_SIZE);
         return new DeviceSynchronizationTask(iotHubAdapter, loAdapter, azureIotHubProperties, deviceSynchronization);
     }
@@ -67,7 +67,7 @@ class DeviceSynchronizationTaskTest {
     @Test
     void shouldSynchronizeDevicesBetweenLApiClientAndIotHubAdapterWhenDeviceSynchronizationIsOn() throws InterruptedException {
         ExecutorService executor = Executors.newCachedThreadPool();
-        DeviceSynchronizationTask deviceSynchronizationTask = getDeviceSynchronizationTask(true);
+        DeviceSynchronizationTask deviceSynchronizationTask = getDeviceSynchronizationTask(true, LO_DEVICES_GROUP);
         executor.execute(deviceSynchronizationTask);
         executor.awaitTermination(2, TimeUnit.SECONDS);
 
@@ -81,11 +81,11 @@ class DeviceSynchronizationTaskTest {
     @Test
     void shouldSynchronizeDevicesBetweenLApiClientAndIotHubAdapterWhenDeviceSynchronizationIsOff() throws InterruptedException {
         ExecutorService executor = Executors.newCachedThreadPool();
-        DeviceSynchronizationTask deviceSynchronizationTask = getDeviceSynchronizationTask(false);
+        DeviceSynchronizationTask deviceSynchronizationTask = getDeviceSynchronizationTask(false, null);
         executor.execute(deviceSynchronizationTask);
         executor.awaitTermination(2, TimeUnit.SECONDS);
 
-        verify(loAdapter, times(1)).getDevices(LO_DEVICES_GROUP);
+        verify(loAdapter, times(1)).getDevices(null);
         verify(iotHubAdapter, times(1)).createOrGetIotDeviceClient(anyString());
         verify(iotHubAdapter, times(1)).getIotDeviceIds();
         verify(iotHubAdapter, times(0)).deleteDevice(anyString());

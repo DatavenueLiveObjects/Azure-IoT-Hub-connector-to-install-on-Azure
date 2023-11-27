@@ -50,7 +50,7 @@ public class DeviceSynchronizationTask implements Runnable {
                 LOG.debug("Synchronizing devices for group {}", azureIotHubProperties.getLoDevicesGroup());
                 createDeviceClientsAndSynchronizeDevicesFromLOToIoTHub();
             } else {
-                LOG.debug("Synchronizing device clients for group {}", azureIotHubProperties.getLoDevicesGroup());
+                LOG.debug("Synchronizing device clients");
                 createOnlyDeviceClientsForDevicesExistingInIoTHub();
             }
         } catch (Exception e) {
@@ -63,7 +63,7 @@ public class DeviceSynchronizationTask implements Runnable {
     }
 
     private void createDeviceClientsAndSynchronizeDevicesFromLOToIoTHub() throws InterruptedException {
-        Set<String> loIds = getDeviceIDsFromLO();
+        Set<String> loIds = getDeviceIDsFromLO(azureIotHubProperties.getLoDevicesGroup());
         if (!loIds.isEmpty()) {
             createOrGerDeviceClients(loIds);
         }
@@ -76,8 +76,8 @@ public class DeviceSynchronizationTask implements Runnable {
     }
 
     @NotNull
-    private Set<String> getDeviceIDsFromLO() {
-        return loAdapter.getDevices(azureIotHubProperties.getLoDevicesGroup()).stream()
+    private Set<String> getDeviceIDsFromLO(String loDevicesGroup) {
+        return loAdapter.getDevices(loDevicesGroup).stream()
                 .map(Device::getId)
                 .collect(Collectors.toSet());
     }
@@ -102,13 +102,13 @@ public class DeviceSynchronizationTask implements Runnable {
     }
 
     private void createOnlyDeviceClientsForDevicesExistingInIoTHub() throws InterruptedException {
-        Set<String> loIds = getDeviceIDsFromLO();
+        Set<String> loIds = getDeviceIDsFromLO(null);
         Set<String> iotIds = getDeviceIDsFromIoTHub();
         LOG.info("Number of devices in LO: {}", loIds.size());
         LOG.info("Number of devices in IoT Hub: {}", iotIds.size());
 
         loIds.retainAll(iotIds);
-        LOG.info("Number of devices from LO that exist in IoT Hub: {}", iotIds.size());
+        LOG.info("Number of devices from LO that exist in IoT Hub: {}", loIds.size());
         if (!loIds.isEmpty()) {
             createOrGerDeviceClients(loIds);
             iotHubAdapter.removeDeviceClientsForNonExistentDevices(loIds);
