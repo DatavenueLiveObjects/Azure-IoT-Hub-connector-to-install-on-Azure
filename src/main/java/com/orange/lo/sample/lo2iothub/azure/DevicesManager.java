@@ -102,6 +102,7 @@ public class DevicesManager {
                 .filter(s -> !idsOfDeviceForWhichClientsShouldBeKept.contains(s))
                 .collect(Collectors.toList());
 
+        LOG.info("Number of devices to unregister from multiplexingClientManager #{}: {}", mcm.getMultiplexingClientId(), deviceIDsToUnregister.size());
         for (String idOfNonExistentDevice : deviceIDsToUnregister) {
             try {
                 LOG.info("Unregistering non-existent device {}", idOfNonExistentDevice);

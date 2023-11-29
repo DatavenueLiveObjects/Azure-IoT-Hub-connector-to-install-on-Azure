@@ -49,6 +49,10 @@ public class MultiplexingClientManager implements IotHubConnectionStatusChangeCa
         this.openMultiplexingClient();
     }
 
+    public int getMultiplexingClientId() {
+        return multiplexingClientId;
+    }
+
     @Override
     public void onStatusChanged(ConnectionStatusChangeContext connectionStatusChangeContext) {
         multiplexedConnectionStatus = connectionStatusChangeContext.getNewStatus();
@@ -118,10 +122,10 @@ public class MultiplexingClientManager implements IotHubConnectionStatusChangeCa
         synchronized (this.operationLock) {
             if (this.multiplexingClient.isDeviceRegistered(deviceId)) {
                 this.multiplexingClient.unregisterDeviceClient(multiplexedDeviceClientManagers.get(deviceId).getDeviceClient());
-                this.multiplexedDeviceClientManagers.remove(deviceId);
             } else {
                 this.deviceClientManagersToRegister.removeIf(dcm -> dcm.getDeviceClient().getConfig().getDeviceId().equals(deviceId));
             }
+            this.multiplexedDeviceClientManagers.remove(deviceId);
         }
     }
 
