@@ -73,7 +73,7 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
             LOG.error("Connection status changed for device client: {}, status: {}, reason: {}, error: {}", deviceClient.getConfig().getDeviceId(), status, statusChangeReason, throwable.getMessage());
         }
 
-        if (status == IotHubConnectionStatus.DISCONNECTED) {
+        if (status == IotHubConnectionStatus.DISCONNECTED && statusChangeReason != IotHubConnectionStatusChangeReason.CLIENT_CLOSE) {
             reestablishSessionAsync();
         }
     }
