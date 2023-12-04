@@ -140,7 +140,8 @@ public class MultiplexingClientManager implements IotHubConnectionStatusChangeCa
                     deviceClientManagersToRegister.clear();
                 } catch (MultiplexingClientRegistrationException e) {
                     Set<String> allDeviceIds = deviceClientManagersToRegister.stream().map(dcm -> dcm.getDeviceClient().getConfig().getDeviceId()).collect(Collectors.toSet());
-                    Set<String> errorDeviceIds = e.getRegistrationExceptions().keySet();
+                    Map<String, Exception> registrationExceptions = e.getRegistrationExceptions();
+                    Set<String> errorDeviceIds = registrationExceptions.keySet();
                     Set<String> registeredDeviceIds = allDeviceIds.stream().filter(id -> !errorDeviceIds.contains(id)).collect(Collectors.toSet());
 
                     LOG.info("Registered device clients {} for multiplexing client: {}", registeredDeviceIds, multiplexingClientId);
@@ -148,6 +149,10 @@ public class MultiplexingClientManager implements IotHubConnectionStatusChangeCa
                     deviceClientManagersToRegister.removeIf(dcm -> registeredDeviceIds.contains(dcm.getDeviceClient().getConfig().getDeviceId()));
 
                     LOG.error("Error while registering device clients {} for multiplexing client: {}", errorDeviceIds, multiplexingClientId, e);
+                    for (String deviceId : errorDeviceIds) {
+                        Exception throwable = registrationExceptions.get(deviceId);
+                        LOG.error("Error registering device client {} for multiplexing client: {}", deviceId, throwable.getMessage());
+                    }
 
                     List<String> deviceIdsToNotRetry = new ArrayList<>();
                     errorDeviceIds.forEach(id -> {

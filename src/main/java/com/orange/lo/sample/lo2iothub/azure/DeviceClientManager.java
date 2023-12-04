@@ -156,6 +156,11 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
         return config.getDeviceId();
     }
 
+    @Override
+    public String toString() {
+        return getDeviceId();
+    }
+
     private class MessageSentCallbackImpl implements MessageSentCallback {
         private int actualRetryCount = 1;
 
