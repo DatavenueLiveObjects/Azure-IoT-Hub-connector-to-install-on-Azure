@@ -109,14 +109,10 @@ public class ApplicationConfig {
                     try {
                         loAdapter = new LoAdapter(loApiClient, liveObjectsProperties.getPageSize(),
                                 groupRetryPolicy, deviceRetryPolicy);
+                        loAdapter.connect();
                     } catch (Exception e) {
-                        LOG.error("Problem with connection. Check iot hub and LO credentials", e);
+                        LOG.error("Problem with connection. Check LO credentials", e);
                         problemWithConnection = true;
-                        try {
-                            iotHubAdapter.getIotDeviceIds();
-                        } catch (Exception ex) {
-                            connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
-                        }
                     }
 
                     LoCommandSender loCommandSender = new LoCommandSender(loApiClient, objectMapper, commandRetryPolicy);
@@ -126,8 +122,10 @@ public class ApplicationConfig {
                     try {
                         deviceSynchronizationTask = new DeviceSynchronizationTask(
                                 iotHubAdapter, loAdapter, azureIotHubProperties, liveObjectsProperties.isDeviceSynchronization());
+                        iotHubAdapter.logDeviceRegistryStatistics();
                     } catch (Exception e) {
-                        LOG.error("Problem with connection. Check iot hub and LO credentials", e);
+                        LOG.error("Problem with connection. Check iot hub credentials", e);
+                        problemWithConnection = true;
                         connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
                     }
 

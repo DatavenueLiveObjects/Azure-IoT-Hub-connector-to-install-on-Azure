@@ -90,4 +90,8 @@ public class IotHubAdapter {
     public void removeDeviceClientsForNonExistentDevices(Set<String> existingDeviceIDs) {
         devicesManager.keepDeviceClientsOnlyForTheseDevices(existingDeviceIDs);
     }
+
+    public void logDeviceRegistryStatistics() {
+        ioTDeviceProvider.logRegistryClientStatistics();
+    }
 }
