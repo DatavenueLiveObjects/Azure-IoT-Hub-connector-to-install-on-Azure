@@ -3,6 +3,7 @@ package com.orange.lo.sample.lo2iothub.azure;
 import com.microsoft.azure.sdk.iot.device.*;
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
 import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
+import com.microsoft.azure.sdk.iot.device.transport.TransportException;
 import com.microsoft.azure.sdk.iot.service.registry.Device;
 import com.orange.lo.sample.lo2iothub.exceptions.SendMessageException;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
@@ -70,21 +71,22 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
         if (throwable == null) {
             LOG.info("Connection status changed for device client: {}, status: {}, reason: {}", deviceClient.getConfig().getDeviceId(), status, statusChangeReason);
         } else {
-            LOG.error("Connection status changed for device client: {}, status: {}, reason: {}, error: {}", deviceClient.getConfig().getDeviceId(), status, statusChangeReason, throwable.getMessage());
+            LOG.error("Connection status changed for device client: {}, status: {}, reason: {}, error: {} {}", deviceClient.getConfig().getDeviceId(), status, statusChangeReason, throwable.getClass(), throwable.getMessage());
         }
 
         if (status == IotHubConnectionStatus.DISCONNECTED && statusChangeReason != IotHubConnectionStatusChangeReason.CLIENT_CLOSE) {
-            reestablishSessionAsync();
+            reestablishSessionAsync(throwable);
         }
     }
 
-    private void reestablishSessionAsync() {
+    private void reestablishSessionAsync(Throwable throwable) {
         new Thread(() -> {
             synchronized (reestablishSessionLock) {
                 // This device is always multiplexed so if multiplexing client is reconnecting we do not want to reconnect device client
                 if (multiplexingClientManager.getMultiplexedConnectionStatus() == IotHubConnectionStatus.CONNECTED
                         // we also do not want to reconnect device client in loop because of many messages
                         && System.currentTimeMillis() - lastReestablishSessionTimestamp > REESTABLISH_SESSION_DELAY) {
+                    TransportException transportExceptionFromThrowable = getTransportExceptionFromThrowable(throwable);
 
                     Failsafe.with(getReconnectRetryPolicy()).run(() -> {
                         LOG.info("Reconnecting device client: {}", deviceClient.getConfig().getDeviceId());
@@ -93,10 +95,12 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
                             multiplexingClientManager.unregisterDeviceClient(this);
                             LOG.info("Unregister device client: {} success", deviceClient.getConfig().getDeviceId());
                         }
-                        if (ioTDeviceProvider.deviceExists(deviceClient.getConfig().getDeviceId())) {
+                        if (transportExceptionFromThrowable.isRetryable() && ioTDeviceProvider.deviceExists(deviceClient.getConfig().getDeviceId())) {
                             LOG.info("Register device client: {}", deviceClient.getConfig().getDeviceId());
                             multiplexingClientManager.registerDeviceClientManager(this);
                             LOG.info("Register device client: {} success", deviceClient.getConfig().getDeviceId());
+                        } else if (!transportExceptionFromThrowable.isRetryable()) {
+                            LOG.info("Reconnecting device client: {} was abandoned due to encountering a non-retryable exception: {}: {}", deviceClient.getConfig().getDeviceId(), throwable.getClass(), throwable.getMessage());
                         } else {
                             LOG.info("Device client: {} not exists in IoT Hub", deviceClient.getConfig().getDeviceId());
                         }
@@ -161,6 +165,21 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
         return getDeviceId();
     }
 
+    /**
+     * Based on method from {@link com.microsoft.azure.sdk.iot.device.transport.IotHubTransport}
+     * @param cause The throwable that caused the change in status. May be null if there wasn't an associated throwable.
+     * @return Instance of TransportException
+     */
+    private static TransportException getTransportExceptionFromThrowable(Throwable cause) {
+        TransportException transportException;
+        if (cause instanceof TransportException) {
+            return (TransportException) cause;
+        }
+        transportException = new TransportException(cause);
+        transportException.setRetryable(true);
+        return transportException;
+    }
+
     private class MessageSentCallbackImpl implements MessageSentCallback {
         private int actualRetryCount = 1;
 
@@ -173,10 +192,10 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
                 counterProvider.getMesasageSentCounter().increment();
             } else {
                 counterProvider.getMesasageSentAttemptFailedCounter().increment();
-                if (actualRetryCount < RETRY_SEND_MESSAGE_MAX_ATTEMPTS) {
+                if (exception.isRetryable() && actualRetryCount < RETRY_SEND_MESSAGE_MAX_ATTEMPTS) {
                     LOG.debug("IoT Hub responded to message with id {} from {} with status {}. Retrying...", sentMessage.getMessageId(), deviceClient.getConfig().getDeviceId(), status.name());
                     actualRetryCount++;
-                    reestablishSessionAsync();
+                    reestablishSessionAsync(exception);
                     goSleep();
                     sendMessage(sentMessage);
                 } else {
