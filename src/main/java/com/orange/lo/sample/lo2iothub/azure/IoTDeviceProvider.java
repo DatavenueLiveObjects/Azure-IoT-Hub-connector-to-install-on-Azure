@@ -67,7 +67,7 @@ public class IoTDeviceProvider {
         try {
             String selectingQuery = "SELECT * FROM devices";
             if(queryByTags) {
-                selectingQuery = "WHERE tags." + tagPlatformKey + "='" + tagPlatformValue + "'";
+                selectingQuery += " WHERE tags." + tagPlatformKey + "='" + tagPlatformValue + "'";
             }
             TwinQueryResponse query = twinClient
                     .query(selectingQuery);
