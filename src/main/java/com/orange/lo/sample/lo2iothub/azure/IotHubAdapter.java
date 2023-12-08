@@ -8,16 +8,17 @@
 package com.orange.lo.sample.lo2iothub.azure;
 
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
+import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.microsoft.azure.sdk.iot.service.registry.Device;
 import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
+import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.invoke.MethodHandles;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class IotHubAdapter {
 
@@ -26,11 +27,13 @@ public class IotHubAdapter {
     private final IoTDeviceProvider ioTDeviceProvider;
     private final boolean deviceSynchronization;
     private final DevicesManager devicesManager;
+    private final ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
 
-    public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider, DevicesManager deviceClientManager, boolean deviceSynchronization) {
+    public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider, DevicesManager deviceClientManager, boolean deviceSynchronization, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint) {
         this.ioTDeviceProvider = ioTDeviceProvider;
         this.devicesManager = deviceClientManager;
         this.deviceSynchronization = deviceSynchronization;
+        this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
     }
 
     public void sendMessage(String loClientId, String message) {
@@ -57,7 +60,14 @@ public class IotHubAdapter {
         synchronized (deviceId.intern()) {
             if (!devicesManager.containsDeviceClient(deviceId)) {
                 LOG.debug("Creating device client that will be multiplexed: {} ", deviceId);
-                Device device = ioTDeviceProvider.getDevice(deviceId);
+                Device device = null;
+                try {
+                    device = ioTDeviceProvider.getDevice(deviceId);
+                } catch (Exception e) {
+                    LOG.debug("Problem with connection. Check IoT Hub credentials ", e);
+                    connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
+                }
+
                 // no device in iot hub
                 if (device == null) {
                     if (deviceSynchronization) {

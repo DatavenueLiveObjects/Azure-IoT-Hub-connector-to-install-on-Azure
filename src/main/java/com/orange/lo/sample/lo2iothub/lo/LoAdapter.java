@@ -7,6 +7,7 @@
 
 package com.orange.lo.sample.lo2iothub.lo;
 
+import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
 import com.orange.lo.sdk.LOApiClient;
 import com.orange.lo.sdk.fifomqtt.DataManagementFifo;
 import com.orange.lo.sdk.rest.devicemanagement.GetDevicesFilter;
@@ -15,22 +16,16 @@ import com.orange.lo.sdk.rest.devicemanagement.Groups;
 import com.orange.lo.sdk.rest.devicemanagement.Inventory;
 import com.orange.lo.sdk.rest.model.Device;
 import com.orange.lo.sdk.rest.model.Group;
-
-import java.lang.invoke.MethodHandles;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.client.HttpClientErrorException;
 
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
+import java.lang.invoke.MethodHandles;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class LoAdapter {
 
@@ -51,7 +46,11 @@ public class LoAdapter {
         this.pageSize = pageSize;
         this.groupRetryPolicy = groupRetryPolicy;
         this.deviceRetryPolicy = deviceRetryPolicy;
-        initialize();
+        try {
+            initialize();
+        } catch (Exception e) {
+            throw new DeviceSynchronizationException("Problem with connection. Check iot hub and LO credentials");
+        }
     }
 
     private void initialize() {
@@ -60,8 +59,7 @@ public class LoAdapter {
         try {
             getExistingGroups();
         } catch (Exception e) {
-            LOG.error("Unexpected error while managing group: {}", e.getMessage());
-            System.exit(1);
+            throw new DeviceSynchronizationException("Problem with connection. Check iot hub and LO credentials");
         }
     }
 
@@ -79,8 +77,7 @@ public class LoAdapter {
                     break;
                 }
             } catch (HttpClientErrorException e) {
-                LOG.error("Cannot retrieve information about groups \n {}", e.getResponseBodyAsString());
-                System.exit(1);
+                throw new DeviceSynchronizationException("Problem with connection. Check iot hub and LO credentials");
             }
         }
     }

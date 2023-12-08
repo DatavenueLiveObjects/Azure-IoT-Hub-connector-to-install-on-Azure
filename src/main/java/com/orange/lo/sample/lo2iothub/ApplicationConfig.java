@@ -10,9 +10,13 @@ package com.orange.lo.sample.lo2iothub;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
+import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.microsoft.azure.sdk.iot.service.registry.RegistryClient;
 import com.microsoft.azure.sdk.iot.service.twin.TwinClient;
-import com.orange.lo.sample.lo2iothub.azure.*;
+import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
+import com.orange.lo.sample.lo2iothub.azure.DevicesManager;
+import com.orange.lo.sample.lo2iothub.azure.IoTDeviceProvider;
+import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.exceptions.InitializationException;
 import com.orange.lo.sample.lo2iothub.exceptions.SendMessageException;
 import com.orange.lo.sample.lo2iothub.lo.LiveObjectsProperties;
@@ -24,16 +28,8 @@ import com.orange.lo.sdk.LOApiClient;
 import com.orange.lo.sdk.LOApiClientParameters;
 import com.orange.lo.sdk.rest.model.Device;
 import com.orange.lo.sdk.rest.model.Group;
-
-import java.io.File;
-import java.io.FileReader;
-import java.io.InputStreamReader;
-import java.lang.invoke.MethodHandles;
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-
 import net.jodah.failsafe.Fallback;
+import net.jodah.failsafe.RetryPolicy;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.slf4j.Logger;
@@ -47,7 +43,13 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.client.HttpClientErrorException;
 
-import net.jodah.failsafe.RetryPolicy;
+import java.io.File;
+import java.io.FileReader;
+import java.io.InputStreamReader;
+import java.lang.invoke.MethodHandles;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 @EnableIntegration
 @Configuration
@@ -97,26 +99,47 @@ public class ApplicationConfig {
                     IotHubAdapter iotHubAdapter = new IotHubAdapter(
                             ioTDeviceProvider,
                             deviceClientManager,
-                            liveObjectsProperties.isDeviceSynchronization()
+                            liveObjectsProperties.isDeviceSynchronization(),
+                            connectorHealthActuatorEndpoint
                     );
 
                     LOApiClientParameters loApiClientParameters = loApiClientParameters(liveObjectsProperties,
                             azureIotHubProperties, iotHubAdapter);
                     LOApiClient loApiClient = new LOApiClient(loApiClientParameters);
                     connectorHealthActuatorEndpoint.addLoApiClient(loApiClient);
-                    LoAdapter loAdapter = new LoAdapter(loApiClient, liveObjectsProperties.getPageSize(),
-                            groupRetryPolicy, deviceRetryPolicy);
+
+                    LoAdapter loAdapter = null;
+                    boolean problemWithConnection = false;
+                    try {
+                        loAdapter = new LoAdapter(loApiClient, liveObjectsProperties.getPageSize(),
+                                groupRetryPolicy, deviceRetryPolicy);
+
+                    } catch (Exception e) {
+                        LOG.error("Problem with connection. Check iot hub and LO credentials", e);
+                        connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
+                        problemWithConnection = true;
+                    }
 
                     LoCommandSender loCommandSender = new LoCommandSender(loApiClient, objectMapper, commandRetryPolicy);
                     deviceClientManager.setLoCommandSender(loCommandSender);
 
-                    DeviceSynchronizationTask deviceSynchronizationTask = new DeviceSynchronizationTask(
-                            iotHubAdapter, loAdapter, azureIotHubProperties, liveObjectsProperties.isDeviceSynchronization());
+                    DeviceSynchronizationTask deviceSynchronizationTask = null;
+                    try {
+                        deviceSynchronizationTask = new DeviceSynchronizationTask(
+                                iotHubAdapter, loAdapter, azureIotHubProperties, liveObjectsProperties.isDeviceSynchronization(), connectorHealthActuatorEndpoint);
+                    } catch (Exception e) {
+                        LOG.error("Problem with connection. Check iot hub and LO credentials", e);
+                        connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
+                    }
+
                     int synchronizationDeviceInterval = liveObjectsProperties.getSynchronizationDeviceInterval();
                     Duration period = Duration.ofSeconds(synchronizationDeviceInterval);
                     taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, period);
 
-                    loAdapter.startListeningForMessages();
+                    if (!problemWithConnection)
+                        loAdapter.startListeningForMessages();
+
+
                 } catch (IotHubClientException e) {
                     throw new InitializationException(e);
                 }
