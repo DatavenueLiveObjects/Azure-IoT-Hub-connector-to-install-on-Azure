@@ -14,6 +14,7 @@ import com.microsoft.azure.sdk.iot.service.registry.RegistryClient;
 import com.microsoft.azure.sdk.iot.service.twin.TwinClient;
 import com.orange.lo.sample.lo2iothub.azure.*;
 import com.orange.lo.sample.lo2iothub.exceptions.InitializationException;
+import com.orange.lo.sample.lo2iothub.exceptions.SendMessageException;
 import com.orange.lo.sample.lo2iothub.lo.LiveObjectsProperties;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
@@ -32,6 +33,7 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
+import net.jodah.failsafe.Fallback;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.slf4j.Logger;
@@ -94,26 +96,47 @@ public class ApplicationConfig {
                     IotHubAdapter iotHubAdapter = new IotHubAdapter(
                             ioTDeviceProvider,
                             deviceClientManager,
-                            liveObjectsProperties.isDeviceSynchronization()
+                            liveObjectsProperties.isDeviceSynchronization(),
+                            connectorHealthActuatorEndpoint
                     );
 
                     LOApiClientParameters loApiClientParameters = loApiClientParameters(liveObjectsProperties,
                             azureIotHubProperties, iotHubAdapter);
                     LOApiClient loApiClient = new LOApiClient(loApiClientParameters);
                     connectorHealthActuatorEndpoint.addLoApiClient(loApiClient);
-                    LoAdapter loAdapter = new LoAdapter(loApiClient, liveObjectsProperties.getPageSize(),
-                            groupRetryPolicy, deviceRetryPolicy);
+
+                    LoAdapter loAdapter = null;
+                    boolean problemWithConnection = false;
+                    try {
+                        loAdapter = new LoAdapter(loApiClient, liveObjectsProperties.getPageSize(),
+                                groupRetryPolicy, deviceRetryPolicy);
+
+                    } catch (Exception e) {
+                        LOG.error("Problem with connection. Check iot hub and LO credentials", e);
+                        connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
+                        problemWithConnection = true;
+                    }
 
                     LoCommandSender loCommandSender = new LoCommandSender(loApiClient, objectMapper, commandRetryPolicy);
                     deviceClientManager.setLoCommandSender(loCommandSender);
 
-                    DeviceSynchronizationTask deviceSynchronizationTask = new DeviceSynchronizationTask(
-                            iotHubAdapter, loAdapter, azureIotHubProperties, liveObjectsProperties.isDeviceSynchronization());
+                    DeviceSynchronizationTask deviceSynchronizationTask = null;
+                    try {
+                        deviceSynchronizationTask = new DeviceSynchronizationTask(
+                                iotHubAdapter, loAdapter, azureIotHubProperties, liveObjectsProperties.isDeviceSynchronization(), connectorHealthActuatorEndpoint);
+                    } catch (Exception e) {
+                        LOG.error("Problem with connection. Check iot hub and LO credentials", e);
+                        connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
+                    }
 
-                    Duration deviceSynchronizationInterval = Duration.ofSeconds(liveObjectsProperties.getDeviceSynchronizationInterval());
-                    taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, deviceSynchronizationInterval);
+                    int synchronizationDeviceInterval = liveObjectsProperties.getSynchronizationDeviceInterval();
+                    Duration period = Duration.ofSeconds(synchronizationDeviceInterval);
+                    taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, period);
 
-                    loAdapter.startListeningForMessages();
+                    if (!problemWithConnection)
+                        loAdapter.startListeningForMessages();
+
+
                 } catch (IotHubClientException e) {
                     throw new InitializationException(e);
                 }
