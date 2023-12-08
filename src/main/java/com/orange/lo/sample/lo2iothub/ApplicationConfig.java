@@ -92,7 +92,7 @@ public class ApplicationConfig {
                     IoTDeviceProvider ioTDeviceProvider = createIotDeviceProvider(azureIotHubProperties);
 
                     DevicesManager deviceClientManager = new DevicesManager(
-                            azureIotHubProperties.getIotHostName(), azureIotHubProperties.getSynchronizationPeriod(), connectorHealthActuatorEndpoint, ioTDeviceProvider, counters, messageRetryPolicy(), sendMessageFallback());
+                            azureIotHubProperties.getIotHostName(), azureIotHubProperties.getSynchronizationPeriod(), connectorHealthActuatorEndpoint, ioTDeviceProvider, counters);
 
                     IotHubAdapter iotHubAdapter = new IotHubAdapter(
                             ioTDeviceProvider,
@@ -153,17 +153,6 @@ public class ApplicationConfig {
                 .connectorType(loProperties.getConnectorType())
                 .connectorVersion(getConnectorVersion())
                 .build();
-    }
-
-    public Fallback<Void> sendMessageFallback() {
-        return Fallback.ofException(e -> new SendMessageException(e.getLastFailure()));
-    }
-
-    public RetryPolicy<Void> messageRetryPolicy() {
-        return new RetryPolicy<Void>().handleIf(e -> e instanceof IllegalStateException)
-                .withMaxAttempts(-1)
-                .withBackoff(1, 60, ChronoUnit.SECONDS)
-                .withMaxDuration(Duration.ofMinutes(50));
     }
 
     public RetryPolicy<Void> restCommandRetryPolicy() {

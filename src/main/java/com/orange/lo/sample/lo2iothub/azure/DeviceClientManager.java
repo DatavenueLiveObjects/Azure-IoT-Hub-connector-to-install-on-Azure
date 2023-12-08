@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.invoke.MethodHandles;
+import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,7 +30,7 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
     private long lastReestablishSessionTimestamp = 0;
 
     private static final long MESSAGE_EXPIRY_TIME = 60_000; // 1 minute
-    private static final long RETRY_SEND_MESSAGE_DELAY = 10_000; // 10 seconds
+    private static final Duration RETRY_SEND_MESSAGE_DELAY = Duration.ofSeconds(1);
     private static final int RETRY_SEND_MESSAGE_MAX_ATTEMPTS = 10;
 
     private final DeviceClient deviceClient;
@@ -37,21 +38,15 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
     private MultiplexingClientManager multiplexingClientManager;
     private final IoTDeviceProvider ioTDeviceProvider;
 
-    private static final Map<String, MessageSentCallback> callbacksCache = new ConcurrentHashMap<>();
-
     private Counters counterProvider;
-    private RetryPolicy<Void> messageRetryPolicy;
-    private Fallback<Void> sendMessageFallback;
 
-    public DeviceClientManager(Device device, String host, LoCommandSender loCommandSender, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider, RetryPolicy<Void> messageRetryPolicy, Fallback<Void> sendMessageFallback) {
+    public DeviceClientManager(Device device, String host, LoCommandSender loCommandSender, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider) {
         this.ioTDeviceProvider = ioTDeviceProvider;
         this.deviceClient = new DeviceClient(getConnectionString(device, host), IotHubClientProtocol.AMQPS);
         this.deviceClient.setMessageCallback(this, null);
         this.deviceClient.setConnectionStatusChangeCallback(this, null);
         this.loCommandSender = loCommandSender;
         this.counterProvider = counterProvider;
-        this.messageRetryPolicy = messageRetryPolicy;
-        this.sendMessageFallback = sendMessageFallback;
     }
 
     public void setMultiplexingClientManager(MultiplexingClientManager multiplexingClientManager) {
@@ -69,9 +64,9 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
         Throwable throwable = connectionStatusChangeContext.getCause();
 
         if (throwable == null) {
-            LOG.info("Connection status changed for device client: {}, status: {}, reason: {}", deviceClient.getConfig().getDeviceId(), status, statusChangeReason);
+            LOG.info("Connection status changed for device client: {}, status: {}, reason: {}", getDeviceId(), status, statusChangeReason);
         } else {
-            LOG.error("Connection status changed for device client: {}, status: {}, reason: {}, error: {} {}", deviceClient.getConfig().getDeviceId(), status, statusChangeReason, throwable.getClass(), throwable.getMessage());
+            LOG.error("Connection status changed for device client: {}, status: {}, reason: {}, error: {} {}", getDeviceId(), status, statusChangeReason, throwable.getClass(), throwable.getMessage());
         }
 
         if (status == IotHubConnectionStatus.DISCONNECTED && statusChangeReason != IotHubConnectionStatusChangeReason.CLIENT_CLOSE) {
@@ -89,20 +84,20 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
                     TransportException transportExceptionFromThrowable = getTransportExceptionFromThrowable(throwable);
 
                     Failsafe.with(getReconnectRetryPolicy()).run(() -> {
-                        LOG.info("Reconnecting device client: {}", deviceClient.getConfig().getDeviceId());
-                        if (multiplexingClientManager.isDeviceRegistered(deviceClient.getConfig().getDeviceId())) {
-                            LOG.info("Unregister device client: {}", deviceClient.getConfig().getDeviceId());
+                        LOG.info("Reconnecting device client: {}", getDeviceId());
+                        if (multiplexingClientManager.isDeviceRegistered(getDeviceId())) {
+                            LOG.info("Unregister device client: {}", getDeviceId());
                             multiplexingClientManager.unregisterDeviceClient(this);
-                            LOG.info("Unregister device client: {} success", deviceClient.getConfig().getDeviceId());
+                            LOG.info("Unregister device client: {} success", getDeviceId());
                         }
-                        if (transportExceptionFromThrowable.isRetryable() && ioTDeviceProvider.deviceExists(deviceClient.getConfig().getDeviceId())) {
-                            LOG.info("Register device client: {}", deviceClient.getConfig().getDeviceId());
+                        if (transportExceptionFromThrowable.isRetryable() && ioTDeviceProvider.deviceExists(getDeviceId())) {
+                            LOG.info("Register device client: {}", getDeviceId());
                             multiplexingClientManager.registerDeviceClientManager(this);
-                            LOG.info("Register device client: {} success", deviceClient.getConfig().getDeviceId());
+                            LOG.info("Register device client: {} success", getDeviceId());
                         } else if (!transportExceptionFromThrowable.isRetryable()) {
-                            LOG.info("Reconnecting device client: {} was abandoned due to encountering a non-retryable exception: {}: {}", deviceClient.getConfig().getDeviceId(), throwable.getClass(), throwable.getMessage());
+                            LOG.info("Reconnecting device client: {} was abandoned due to encountering a non-retryable exception: {}: {}", getDeviceId(), throwable.getClass(), throwable.getMessage());
                         } else {
-                            LOG.info("Device client: {} not exists in IoT Hub", deviceClient.getConfig().getDeviceId());
+                            LOG.info("Device client: {} not exists in IoT Hub", getDeviceId());
                         }
                         lastReestablishSessionTimestamp = System.currentTimeMillis();
                     });
@@ -115,24 +110,27 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
         return new RetryPolicy<Void>()
                 .withMaxAttempts(-1)
                 .withBackoff(1, 60, ChronoUnit.SECONDS)
-                .onRetry(e -> LOG.error("Reconnecting device client " + deviceClient.getConfig().getDeviceId() + " error because of " + e.getLastFailure().getMessage() + ", retrying ...", e.getLastFailure()));
+                .onRetry(e -> LOG.error("Reconnecting device client " + getDeviceId() + " error because of " + e.getLastFailure().getMessage() + ", retrying ...", e.getLastFailure()));
     }
 
     @Override
     public IotHubMessageResult onCloudToDeviceMessageReceived(Message message, Object callbackContext) {
 
-        LOG.debug("Received command for device: {} with content {}", deviceClient.getConfig().getDeviceId(),
+        LOG.debug("Received command for device: {} with content {}", getDeviceId(),
                 new String(message.getBytes(), Message.DEFAULT_IOTHUB_MESSAGE_CHARSET));
         for (MessageProperty messageProperty : message.getProperties()) {
             LOG.debug("{} : {}", messageProperty.getName(), messageProperty.getValue());
         }
-        return loCommandSender.send(deviceClient.getConfig().getDeviceId(), new String(message.getBytes()));
+        return loCommandSender.send(getDeviceId(), new String(message.getBytes()));
     }
 
-    private String getConnectionString(Device device, String host) {
-        String deviceId = device.getDeviceId();
-        String primaryKey = device.getSymmetricKey().getPrimaryKey();
-        return String.format(CONNECTION_STRING_PATTERN, host, deviceId, primaryKey);
+    public String getDeviceId() {
+        return deviceClient.getConfig().getDeviceId();
+    }
+
+    @Override
+    public String toString() {
+        return getDeviceId();
     }
 
     public void sendMessage(String loMessage) {
@@ -141,28 +139,42 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
     }
 
     private void sendMessage(Message message) {
-        MessageSentCallback messageSentCallback = callbacksCache.computeIfAbsent(message.getMessageId(), k -> new MessageSentCallbackImpl());
-        try {
-            Failsafe.with(sendMessageFallback, messageRetryPolicy).run(() -> {
-                counterProvider.getMesasageSentAttemptCounter().increment();
-                message.setExpiryTime(MESSAGE_EXPIRY_TIME);
-                deviceClient.sendEventAsync(message, messageSentCallback, null);
-            });
-        } catch (SendMessageException e) {
-            LOG.error("Cannot send message with id " + message.getMessageId() + " from " + deviceClient.getConfig().getDeviceId(), e);
-            counterProvider.getMesasageSentFailedCounter().increment();
-            callbacksCache.remove(message.getMessageId());
-        }
+        Failsafe.with(
+            new RetryPolicy<IotHubStatusCode>()
+                .withMaxAttempts(RETRY_SEND_MESSAGE_MAX_ATTEMPTS)
+                .withDelay(RETRY_SEND_MESSAGE_DELAY)
+                .handleResultIf(r -> IotHubStatusCode.OK != r)
+                .abortOn(e -> e instanceof TransportException && !((TransportException) e).isRetryable())
+                .onRetryScheduled(e -> reestablishSessionAsync(e.getLastFailure()))
+                .onRetry(r->{
+                    LOG.debug("IoT Hub responded to message with id {} from {} with status {}. Retrying...", message.getMessageId(), getDeviceId(), r.getLastResult().name());
+                    counterProvider.getMesasageSentAttemptFailedCounter().increment();
+                })
+                .onSuccess(r -> {
+                    LOG.debug("IoT Hub responded to message with id {} from {} with status {}", message.getMessageId(), getDeviceId(), r.getResult().name());
+                    counterProvider.getMesasageSentCounter().increment();
+                })
+                .onFailure(r -> {
+                    LOG.error("Cannot send message with id " + message.getMessageId() + " from " + getDeviceId(), r.getFailure());
+                    counterProvider.getMesasageSentFailedCounter().increment();
+                })
+        ).getAsyncExecution(execution -> {
+            counterProvider.getMesasageSentAttemptCounter().increment();
+            message.setExpiryTime(MESSAGE_EXPIRY_TIME);
+            deviceClient.sendEventAsync(message, new MessageSentCallback() {
+                @Override
+                public void onMessageSent(Message message, IotHubClientException exception, Object context) {
+                    IotHubStatusCode status = exception == null ? IotHubStatusCode.OK : exception.getStatusCode();
+                    execution.retryFor(status, exception);
+                }
+            }, null);
+        });
     }
 
-    public String getDeviceId() {
-        ClientConfiguration config = deviceClient.getConfig();
-        return config.getDeviceId();
-    }
-
-    @Override
-    public String toString() {
-        return getDeviceId();
+    private String getConnectionString(Device device, String host) {
+        String deviceId = device.getDeviceId();
+        String primaryKey = device.getSymmetricKey().getPrimaryKey();
+        return String.format(CONNECTION_STRING_PATTERN, host, deviceId, primaryKey);
     }
 
     /**
@@ -178,39 +190,5 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
         transportException = new TransportException(cause);
         transportException.setRetryable(true);
         return transportException;
-    }
-
-    private class MessageSentCallbackImpl implements MessageSentCallback {
-        private int actualRetryCount = 1;
-
-        public void onMessageSent(Message sentMessage, IotHubClientException exception, Object context) {
-            IotHubStatusCode status = exception == null ? IotHubStatusCode.OK : exception.getStatusCode();
-
-            if (status == IotHubStatusCode.OK) {
-                LOG.debug("IoT Hub responded to message with id {} from {} with status {}", sentMessage.getMessageId(), deviceClient.getConfig().getDeviceId(), status.name());
-                callbacksCache.remove(sentMessage.getMessageId());
-                counterProvider.getMesasageSentCounter().increment();
-            } else {
-                counterProvider.getMesasageSentAttemptFailedCounter().increment();
-                if (exception.isRetryable() && actualRetryCount < RETRY_SEND_MESSAGE_MAX_ATTEMPTS) {
-                    LOG.debug("IoT Hub responded to message with id {} from {} with status {}. Retrying...", sentMessage.getMessageId(), deviceClient.getConfig().getDeviceId(), status.name());
-                    actualRetryCount++;
-                    reestablishSessionAsync(exception);
-                    goSleep();
-                    sendMessage(sentMessage);
-                } else {
-                    LOG.error("IoT Hub responded to message with id {} from {} with status {}. Message will not be sent again.", sentMessage.getMessageId(), deviceClient.getConfig().getDeviceId(), status.name());
-                    callbacksCache.remove(sentMessage.getMessageId());
-                    counterProvider.getMesasageSentFailedCounter().increment();
-                }
-            }
-        }
-
-        private void goSleep() {
-            try {
-                Thread.sleep(RETRY_SEND_MESSAGE_DELAY);
-            } catch (InterruptedException e) {
-            }
-        }
     }
 }

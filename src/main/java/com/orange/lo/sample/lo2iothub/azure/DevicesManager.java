@@ -30,17 +30,13 @@ public class DevicesManager {
     private final ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
     private final IoTDeviceProvider ioTDeviceProvider;
     private Counters counterProvider;
-    private RetryPolicy<Void> messageRetryPolicy;
-    private Fallback<Void> sendMessageFallback;
 
-    public DevicesManager(String host, int period, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider, RetryPolicy<Void> messageRetryPolicy, Fallback<Void> sendMessageFallback) throws IotHubClientException {
+    public DevicesManager(String host, int period, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider) throws IotHubClientException {
         this.host = host;
         this.period = period;
         this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
         this.ioTDeviceProvider = ioTDeviceProvider;
         this.counterProvider = counterProvider;
-        this.messageRetryPolicy = messageRetryPolicy;
-        this.sendMessageFallback = sendMessageFallback;
         this.multiplexingClientManagerList = Collections.synchronizedList(new LinkedList<>());
     }
 
@@ -58,7 +54,7 @@ public class DevicesManager {
     }
 
     public synchronized void createDeviceClient(Device device) {
-        DeviceClientManager deviceClientManager = new DeviceClientManager(device, host, loCommandSender, ioTDeviceProvider, counterProvider, messageRetryPolicy, sendMessageFallback);
+        DeviceClientManager deviceClientManager = new DeviceClientManager(device, host, loCommandSender, ioTDeviceProvider, counterProvider);
         MultiplexingClientManager freeMultiplexingClientManager = getFreeMultiplexingClientManager();
         deviceClientManager.setMultiplexingClientManager(freeMultiplexingClientManager);
         freeMultiplexingClientManager.registerDeviceClientManager(deviceClientManager);
