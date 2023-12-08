@@ -5,11 +5,9 @@ import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
 import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.microsoft.azure.sdk.iot.device.transport.TransportException;
 import com.microsoft.azure.sdk.iot.service.registry.Device;
-import com.orange.lo.sample.lo2iothub.exceptions.SendMessageException;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
 import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.Fallback;
 import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,8 +15,6 @@ import org.slf4j.LoggerFactory;
 import java.lang.invoke.MethodHandles;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class DeviceClientManager implements MessageCallback, IotHubConnectionStatusChangeCallback {
 
