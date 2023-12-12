@@ -6,6 +6,7 @@ import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.microsoft.azure.sdk.iot.device.transport.TransportException;
 import com.microsoft.azure.sdk.iot.service.registry.Device;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
+import com.orange.lo.sample.lo2iothub.utils.CacheService;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
@@ -35,9 +36,12 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
     private final IoTDeviceProvider ioTDeviceProvider;
 
     private Counters counterProvider;
+    private final CacheService cacheService;
 
-    public DeviceClientManager(Device device, String host, LoCommandSender loCommandSender, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider) {
+    public DeviceClientManager(Device device, String host, LoCommandSender loCommandSender,
+                               IoTDeviceProvider ioTDeviceProvider, Counters counterProvider, CacheService cacheService) {
         this.ioTDeviceProvider = ioTDeviceProvider;
+        this.cacheService = cacheService;
         this.deviceClient = new DeviceClient(getConnectionString(device, host), IotHubClientProtocol.AMQPS);
         this.deviceClient.setMessageCallback(this, null);
         this.deviceClient.setConnectionStatusChangeCallback(this, null);

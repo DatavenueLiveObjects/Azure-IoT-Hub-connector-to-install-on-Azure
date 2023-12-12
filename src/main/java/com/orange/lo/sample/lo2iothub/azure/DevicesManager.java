@@ -12,10 +12,9 @@ import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import com.orange.lo.sample.lo2iothub.utils.CacheService;
 import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
-import net.jodah.failsafe.Fallback;
-import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,13 +29,16 @@ public class DevicesManager {
     private final ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
     private final IoTDeviceProvider ioTDeviceProvider;
     private Counters counterProvider;
+    private final CacheService cacheService;
 
-    public DevicesManager(String host, int period, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider) throws IotHubClientException {
+    public DevicesManager(String host, int period, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint,
+                          IoTDeviceProvider ioTDeviceProvider, Counters counterProvider, CacheService cacheService) throws IotHubClientException {
         this.host = host;
         this.period = period;
         this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
         this.ioTDeviceProvider = ioTDeviceProvider;
         this.counterProvider = counterProvider;
+        this.cacheService = cacheService;
         this.multiplexingClientManagerList = Collections.synchronizedList(new LinkedList<>());
     }
 
@@ -54,7 +56,7 @@ public class DevicesManager {
     }
 
     public synchronized void createDeviceClient(Device device) {
-        DeviceClientManager deviceClientManager = new DeviceClientManager(device, host, loCommandSender, ioTDeviceProvider, counterProvider);
+        DeviceClientManager deviceClientManager = new DeviceClientManager(device, host, loCommandSender, ioTDeviceProvider, counterProvider, cacheService);
         MultiplexingClientManager freeMultiplexingClientManager = getFreeMultiplexingClientManager();
         deviceClientManager.setMultiplexingClientManager(freeMultiplexingClientManager);
         freeMultiplexingClientManager.registerDeviceClientManager(deviceClientManager);

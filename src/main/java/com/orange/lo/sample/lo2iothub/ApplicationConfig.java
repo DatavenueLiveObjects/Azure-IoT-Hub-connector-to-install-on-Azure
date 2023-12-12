@@ -14,10 +14,10 @@ import com.microsoft.azure.sdk.iot.service.registry.RegistryClient;
 import com.microsoft.azure.sdk.iot.service.twin.TwinClient;
 import com.orange.lo.sample.lo2iothub.azure.*;
 import com.orange.lo.sample.lo2iothub.exceptions.InitializationException;
-import com.orange.lo.sample.lo2iothub.exceptions.SendMessageException;
 import com.orange.lo.sample.lo2iothub.lo.LiveObjectsProperties;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
+import com.orange.lo.sample.lo2iothub.utils.CacheService;
 import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
 import com.orange.lo.sdk.LOApiClient;
@@ -33,11 +33,11 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
-import net.jodah.failsafe.Fallback;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -50,6 +50,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import net.jodah.failsafe.RetryPolicy;
 
 @EnableIntegration
+@EnableCaching
 @Configuration
 public class ApplicationConfig {
 
@@ -59,13 +60,15 @@ public class ApplicationConfig {
     private ApplicationProperties applicationProperties;
     private ObjectMapper objectMapper;
     private ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
+    private final CacheService cacheService;
 
     public ApplicationConfig(Counters counterProvider, ApplicationProperties applicationProperties, MappingJackson2HttpMessageConverter springJacksonConverter,
-                             ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint) {
+                             ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint, CacheService cacheService) {
         this.counters = counterProvider;
         this.applicationProperties = applicationProperties;
         this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
         this.objectMapper = springJacksonConverter.getObjectMapper();
+        this.cacheService = cacheService;
     }
 
     @Bean
@@ -88,11 +91,13 @@ public class ApplicationConfig {
 
             azureIotHubList.forEach(azureIotHubProperties -> {
                 try {
-                    LOG.debug("Initializing for {} ", azureIotHubProperties.getIotHostName());
+                    String iotHostName = azureIotHubProperties.getIotHostName();
+                    LOG.debug("Initializing for {} ", iotHostName);
                     IoTDeviceProvider ioTDeviceProvider = createIotDeviceProvider(azureIotHubProperties);
 
+                    int synchronizationPeriod = azureIotHubProperties.getSynchronizationPeriod();
                     DevicesManager deviceClientManager = new DevicesManager(
-                            azureIotHubProperties.getIotHostName(), azureIotHubProperties.getSynchronizationPeriod(), connectorHealthActuatorEndpoint, ioTDeviceProvider, counters);
+                            iotHostName, synchronizationPeriod, connectorHealthActuatorEndpoint, ioTDeviceProvider, counters, cacheService);
 
                     IotHubAdapter iotHubAdapter = new IotHubAdapter(
                             ioTDeviceProvider,
