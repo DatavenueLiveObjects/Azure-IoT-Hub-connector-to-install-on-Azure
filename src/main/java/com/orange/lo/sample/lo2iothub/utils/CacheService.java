@@ -1,6 +1,7 @@
 package com.orange.lo.sample.lo2iothub.utils;
 
 import com.microsoft.azure.sdk.iot.device.Message;
+import org.ehcache.config.builders.CacheConfigurationBuilder;
 import org.springframework.stereotype.Service;
 
 import javax.cache.Cache;
@@ -24,12 +25,12 @@ public class CacheService {
         cacheManager.createCache(MESSAGES_CACHE_KEY, config);
     }
 
-    public void x(String key, Message message) {
+    public void putMessage(String key, Message message) {
         Cache<String, Message> cache = getMessageCache();
         cache.put(key, message);
     }
 
-    private void r(String key) {
+    private void deleteMessage(String key) {
         Cache<String, Message> cache = getMessageCache();
         cache.remove(key);
     }
