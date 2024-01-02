@@ -51,11 +51,26 @@ public class IoTDeviceProvider {
         }
     }
 
-    public List<IotDeviceId> getDevices() {
+    public boolean deviceExists(String deviceId) {
+        try {
+            registryClient.getDevice(deviceId);
+            return true;
+        } catch (IotHubNotFoundException e) {
+            return false;
+        } catch (IotHubException | IOException e) {
+            throw new IotDeviceProviderException("Error while retrieving device: " + deviceId, e);
+        }
+    }
+
+    public List<IotDeviceId> getDevices(boolean queryByTags) {
         List<IotDeviceId> list = new ArrayList<>();
         try {
+            String selectingQuery = "SELECT * FROM devices";
+            if(queryByTags) {
+                selectingQuery += " WHERE tags." + tagPlatformKey + "='" + tagPlatformValue + "'";
+            }
             TwinQueryResponse query = twinClient
-                    .query("SELECT * FROM devices WHERE tags." + tagPlatformKey + "='" + tagPlatformValue + "'");
+                    .query(selectingQuery);
             while (query.hasNext()) {
                 list.add(new IotDeviceId(query.next().getDeviceId()));
             }

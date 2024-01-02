@@ -1,117 +1,118 @@
-///**
-// * Copyright (c) Orange, Inc. and its affiliates. All Rights Reserved.
-// * <p>
-// * This source code is licensed under the MIT license found in the
-// * LICENSE file in the root directory of this source tree.
-// */
-//
-//package com.orange.lo.sample.lo2iothub.azure;
-//
-//import static org.junit.jupiter.api.Assertions.assertEquals;
-//import static org.mockito.ArgumentMatchers.any;
-//import static org.mockito.Mockito.times;
-//import static org.mockito.Mockito.verify;
-//import static org.mockito.Mockito.when;
-//
-//import com.microsoft.azure.sdk.iot.device.DeviceClient;
-//import com.microsoft.azure.sdk.iot.device.IotHubClientProtocol;
-//import com.microsoft.azure.sdk.iot.device.MultiplexingClient;
-//import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
-//import com.microsoft.azure.sdk.iot.service.registry.Device;
-//import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
-//
-//import java.net.URISyntaxException;
-//import java.util.ArrayList;
-//import java.util.List;
-//import java.util.concurrent.TimeoutException;
-//
-//import org.junit.jupiter.api.Assertions;
-//import org.junit.jupiter.api.BeforeEach;
-//import org.junit.jupiter.api.Test;
-//import org.junit.jupiter.api.extension.ExtendWith;
-//import org.mockito.Mock;
-//import org.mockito.junit.jupiter.MockitoExtension;
-//
-//@ExtendWith(MockitoExtension.class)
-//class IotHubAdapterTest {
-//
-//    private static final String DEVICE_ID = "iot-device-id";
-//    public static final String CONNECTION_STRING = "HostName=azure-devices.net;DeviceId=iot-device-id;SharedAccessKey=b3Jhbmdl";
-//
-//    @Mock
-//    private IoTDeviceProvider ioTDeviceProvider;
-//    @Mock
-//    private AzureIotHubProperties iotHubProperties;
-//    @Mock
-//    private Device device;
-//    @Mock
-//    private DevicesManager devicesManager;
-//
-//    private IotHubAdapter iotHubAdapter;
-//
-//    private DeviceClientManager deviceClientManager;
-//    private MultiplexingClientManager multiplexingClientManager;
-//    private IotHubClient ioTHubClient;
-//
-//    @BeforeEach
-//    void setUp() throws URISyntaxException {
-//        iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, deviceClientManager, true);
-//        deviceClientManager = new DeviceClientManager(CONNECTION_STRING, IotHubClientProtocol.MQTT);
-//        multiplexingClientManager = new MultiplexingClientManager(CONNECTION_STRING, IotHubClientProtocol.AMQPS);
-//        ioTHubClient = new IotHubClient(deviceClientManager, multiplexingClientManager);
-//    }
-//
-//    @Test
-//    void shouldCallMessageSenderWhenMessageIsSent() {
-//
-//        when(devicesManager.getDeviceClient(DEVICE_ID)).thenReturn(ioTHubClient);
-//
-//        String message = "{\"metadata\":{\"source\":\"iot-device-id\"}}";
-//
-//        iotHubAdapter.sendMessage(DEVICE_ID, message);
-//
-//        verify(deviceClientManager, times(1)).sendMessage(any());
-//    }
-//
-//    @Test
-//    void shouldUseDeviceManagersAndMultiplexingClientManagerAndIoTDeviceProviderWhenDeviceIsDeleted()
-//            throws InterruptedException, IotHubClientException, TimeoutException {
-//
-//        iotHubAdapter.deleteDevice(DEVICE_ID);
-//
-//        verify(deviceClientManager, times(1)).removeDeviceClient(DEVICE_ID);
-//        verify(ioTDeviceProvider, times(1)).deleteDevice(DEVICE_ID);
-//    }
-//
-//    @Test
-//    void shouldUseIotClientCacheAndIoTDeviceProviderToCreateDeviceClient() {
-//
-//        when(deviceClientManager.getDeviceClient(DEVICE_ID)).thenReturn(ioTHubClient);
-//
-//        IotHubClient ioTHubClient = iotHubAdapter.createOrGetDeviceClient(DEVICE_ID);
-//
-//        assertEquals(deviceClient, ioTHubClient.getDeviceClient());
-//        verify(deviceClientManager, times(1)).containsDeviceClient(DEVICE_ID);
-//        verify(deviceClientManager, times(1)).getDeviceClient(DEVICE_ID);
-//    }
-//
-//    @Test
-//    void shouldThrowDeviceSynchronizationExceptionDuringCreatingDeviceClientWhenSynchronizationIsDisabled() {
-//        IotHubAdapter iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, messageSender, deviceClientManager,false);
-//        when(ioTDeviceProvider.getDevice(DEVICE_ID)).thenReturn(null);
-//
-//        Assertions.assertThrows(DeviceSynchronizationException.class, () -> {
-//            iotHubAdapter.createOrGetDeviceClient(DEVICE_ID);
-//        }, "DeviceSynchronizationException");
-//    }
-//
-//    @Test
-//    void shouldUseIoTDeviceProviderWhenGetDevicesIsCalled() {
-//        ArrayList<IoTDevice> expectedDevices = new ArrayList<>();
-//        when(ioTDeviceProvider.getDevices()).thenReturn(expectedDevices);
-//        List<IoTDevice> devices = iotHubAdapter.getDevices();
-//
-//        assertEquals(expectedDevices, devices);
-//        verify(ioTDeviceProvider, times(1)).getDevices();
-//    }
-//}
+/**
+ * Copyright (c) Orange, Inc. and its affiliates. All Rights Reserved.
+ * <p>
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+package com.orange.lo.sample.lo2iothub.azure;
+
+import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
+import com.microsoft.azure.sdk.iot.service.registry.Device;
+import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.net.URISyntaxException;
+import java.util.concurrent.TimeoutException;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class IotHubAdapterTest {
+
+    private static final String DEVICE_ID = "iot-device-id";
+    public static final String CONNECTION_STRING = "HostName=azure-devices.net;DeviceId=iot-device-id;SharedAccessKey=b3Jhbmdl";
+
+    @Mock
+    private IoTDeviceProvider ioTDeviceProvider;
+    @Mock
+    private AzureIotHubProperties iotHubProperties;
+    @Mock
+    private Device device;
+    @Mock
+    private DevicesManager devicesManager;
+    @Mock
+    private DeviceClientManager deviceClientManager;
+
+    private IotHubAdapter iotHubAdapter;
+    private MultiplexingClientManager multiplexingClientManager;
+
+
+    @BeforeEach
+    void setUp() throws URISyntaxException {
+        iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, devicesManager, true);
+    }
+
+    @Test
+    void shouldCallMessageSenderWhenMessageIsSent() {
+
+        when(devicesManager.containsDeviceClient(DEVICE_ID)).thenReturn(true);
+        when(devicesManager.getDeviceClientManager(DEVICE_ID)).thenReturn(deviceClientManager);
+
+        String message = "{\"metadata\":{\"source\":\"iot-device-id\"}}";
+
+        iotHubAdapter.sendMessage(DEVICE_ID, message);
+
+        verify(deviceClientManager, times(1)).sendMessage(any());
+    }
+
+    @Test
+    void shouldUseDevicesManagerAndIoTDeviceProviderWhenDeviceIsDeleted()
+            throws InterruptedException, IotHubClientException, TimeoutException {
+
+        iotHubAdapter.deleteDevice(DEVICE_ID);
+
+        verify(devicesManager, times(1)).removeDeviceClient(DEVICE_ID);
+        verify(ioTDeviceProvider, times(1)).deleteDevice(DEVICE_ID);
+    }
+
+    @Test
+    void shouldCreateDeviceClientManager() {
+
+        when(devicesManager.containsDeviceClient(DEVICE_ID)).thenReturn(false);
+        when(ioTDeviceProvider.getDevice(DEVICE_ID)).thenReturn(device);
+
+        iotHubAdapter.createOrGetDeviceClientManager(DEVICE_ID);
+
+        verify(devicesManager, times(1)).containsDeviceClient(DEVICE_ID);
+        verify(devicesManager, times(1)).createDeviceClient(device);
+    }
+
+    @Test
+    void shouldGetExistingDeviceClientManager() {
+
+            when(devicesManager.containsDeviceClient(DEVICE_ID)).thenReturn(true);
+            when(devicesManager.getDeviceClientManager(DEVICE_ID)).thenReturn(deviceClientManager);
+
+            iotHubAdapter.createOrGetDeviceClientManager(DEVICE_ID);
+
+            verify(devicesManager, times(1)).containsDeviceClient(DEVICE_ID);
+            verify(devicesManager, times(0)).createDeviceClient(device);
+            verify(devicesManager, times(1)).getDeviceClientManager(DEVICE_ID);
+    }
+
+    @Test
+    void shouldThrowDeviceSynchronizationExceptionDuringCreatingDeviceClientWhenSynchronizationIsDisabled() {
+        IotHubAdapter iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, devicesManager, false);
+
+        when(ioTDeviceProvider.getDevice(DEVICE_ID)).thenReturn(null);
+
+        assertThrows(DeviceSynchronizationException.class, () -> {
+            iotHubAdapter.createOrGetDeviceClientManager(DEVICE_ID);
+        }, "DeviceSynchronizationException");
+    }
+
+    @Test
+    void shouldUseIoTDeviceProviderWithSynchronization() {
+            iotHubAdapter.getIotDeviceIds();
+            verify(ioTDeviceProvider, times(1)).getDevices(true);
+        }
+}

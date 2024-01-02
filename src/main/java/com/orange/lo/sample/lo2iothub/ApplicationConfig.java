@@ -14,7 +14,6 @@ import com.microsoft.azure.sdk.iot.service.registry.RegistryClient;
 import com.microsoft.azure.sdk.iot.service.twin.TwinClient;
 import com.orange.lo.sample.lo2iothub.azure.*;
 import com.orange.lo.sample.lo2iothub.exceptions.InitializationException;
-import com.orange.lo.sample.lo2iothub.exceptions.SendMessageException;
 import com.orange.lo.sample.lo2iothub.lo.LiveObjectsProperties;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
@@ -27,14 +26,12 @@ import com.orange.lo.sdk.rest.model.Group;
 
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.invoke.MethodHandles;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
-import net.jodah.failsafe.Fallback;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.slf4j.Logger;
@@ -90,24 +87,18 @@ public class ApplicationConfig {
             azureIotHubList.forEach(azureIotHubProperties -> {
                 try {
                     LOG.debug("Initializing for {} ", azureIotHubProperties.getIotHostName());
-//                    MessageSender messageSender = new MessageSender(counters);
-//                    MessagesCache messagesCache = new MessagesCache(messageSender);
-//                    messageSender.setMessageRetryPolicy(messageRetryPolicy());
-//                    messageSender.setMessagesCache(messagesCache);
                     IoTDeviceProvider ioTDeviceProvider = createIotDeviceProvider(azureIotHubProperties);
 
-                    DevicesManager deviceClientManager = new DevicesManager(
-                            azureIotHubProperties.getIotHostName(), azureIotHubProperties.getSynchronizationPeriod(), connectorHealthActuatorEndpoint, counters, messageRetryPolicy(), sendMessageFallback());
+                    DevicesManager deviceClientManager = new DevicesManager(azureIotHubProperties, connectorHealthActuatorEndpoint, ioTDeviceProvider, counters);
 
                     IotHubAdapter iotHubAdapter = new IotHubAdapter(
                             ioTDeviceProvider,
-//                            messageSender,
                             deviceClientManager,
                             liveObjectsProperties.isDeviceSynchronization()
                     );
 
                     LOApiClientParameters loApiClientParameters = loApiClientParameters(liveObjectsProperties,
-                            azureIotHubProperties, iotHubAdapter, liveObjectsProperties.isDeviceSynchronization());
+                            azureIotHubProperties, iotHubAdapter);
                     LOApiClient loApiClient = new LOApiClient(loApiClientParameters);
                     connectorHealthActuatorEndpoint.addLoApiClient(loApiClient);
                     LoAdapter loAdapter = new LoAdapter(loApiClient, liveObjectsProperties.getPageSize(),
@@ -116,23 +107,21 @@ public class ApplicationConfig {
                     LoCommandSender loCommandSender = new LoCommandSender(loApiClient, objectMapper, commandRetryPolicy);
                     deviceClientManager.setLoCommandSender(loCommandSender);
 
-                    if (liveObjectsProperties.isDeviceSynchronization()) {
-                        DeviceSynchronizationTask deviceSynchronizationTask = new DeviceSynchronizationTask(
-                                iotHubAdapter, loAdapter, azureIotHubProperties);
-                        int synchronizationDeviceInterval = liveObjectsProperties.getSynchronizationDeviceInterval();
-                        Duration period = Duration.ofSeconds(synchronizationDeviceInterval);
-                        taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, period);
-                    }
+                    DeviceSynchronizationTask deviceSynchronizationTask = new DeviceSynchronizationTask(
+                            iotHubAdapter, loAdapter, azureIotHubProperties, liveObjectsProperties.isDeviceSynchronization());
+
+                    Duration deviceSynchronizationInterval = Duration.ofSeconds(liveObjectsProperties.getDeviceSynchronizationInterval());
+                    taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, deviceSynchronizationInterval);
 
                     loAdapter.startListeningForMessages();
-                } catch (IOException | IotHubClientException e) {
+                } catch (IotHubClientException e) {
                     throw new InitializationException(e);
                 }
             });
         });
     }
 
-    private IoTDeviceProvider createIotDeviceProvider(AzureIotHubProperties azureIotHubProperties) throws IOException {
+    private IoTDeviceProvider createIotDeviceProvider(AzureIotHubProperties azureIotHubProperties) {
         String iotConnectionString = azureIotHubProperties.getIotConnectionString();
         TwinClient twinClient = new TwinClient(iotConnectionString);
         RegistryClient registryClient = new RegistryClient(iotConnectionString);
@@ -142,7 +131,7 @@ public class ApplicationConfig {
     }
 
     private LOApiClientParameters loApiClientParameters(LiveObjectsProperties loProperties,
-                                                        AzureIotHubProperties azureIotHubProperties, IotHubAdapter iotHubAdapter, boolean deviceSynchronization) {
+                                                        AzureIotHubProperties azureIotHubProperties, IotHubAdapter iotHubAdapter) {
 
         List<String> topics = Lists.newArrayList(azureIotHubProperties.getLoMessagesTopic());
         if (loProperties.isDeviceSynchronization()) {
@@ -161,17 +150,6 @@ public class ApplicationConfig {
                 .connectorType(loProperties.getConnectorType())
                 .connectorVersion(getConnectorVersion())
                 .build();
-    }
-
-    public Fallback<Void> sendMessageFallback() {
-        return Fallback.ofException(e -> new SendMessageException(e.getLastFailure()));
-    }
-
-    public RetryPolicy<Void> messageRetryPolicy() {
-        return new RetryPolicy<Void>().handleIf(e -> e instanceof IllegalStateException)
-                .withMaxAttempts(-1)
-                .withBackoff(1, 60, ChronoUnit.SECONDS)
-                .withMaxDuration(Duration.ofMinutes(50));
     }
 
     public RetryPolicy<Void> restCommandRetryPolicy() {
