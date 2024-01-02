@@ -1,3 +1,10 @@
+/**
+ * Copyright (c) Orange. All Rights Reserved.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 package com.orange.lo.sample.lo2iothub.azure;
 
 import com.microsoft.azure.sdk.iot.device.*;
@@ -22,35 +29,35 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
     private static final String CONNECTION_STRING_PATTERN = "HostName=%s;DeviceId=%s;SharedAccessKey=%s";
 
     private Object reestablishSessionLock = new Object();
-    private static final long REESTABLISH_SESSION_DELAY = 10_000; // 10 seconds
     private long lastReestablishSessionTimestamp = 0;
-
-    private static final long MESSAGE_EXPIRY_TIME = 60_000; // 1 minute
-    private static final Duration RETRY_SEND_MESSAGE_DELAY = Duration.ofSeconds(1);
-    private static final int RETRY_SEND_MESSAGE_MAX_ATTEMPTS = 10;
 
     private final DeviceClient deviceClient;
     private final LoCommandSender loCommandSender;
     private MultiplexingClientManager multiplexingClientManager;
+    private final AzureIotHubProperties azureIotHubProperties;
     private final IoTDeviceProvider ioTDeviceProvider;
 
     private Counters counterProvider;
 
-    public DeviceClientManager(Device device, String host, LoCommandSender loCommandSender, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider) {
+    public DeviceClientManager(Device device, AzureIotHubProperties azureIotHubProperties, LoCommandSender loCommandSender, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider) {
+        this.azureIotHubProperties = azureIotHubProperties;
         this.ioTDeviceProvider = ioTDeviceProvider;
-        this.deviceClient = new DeviceClient(getConnectionString(device, host), IotHubClientProtocol.AMQPS);
+        this.deviceClient = new DeviceClient(getConnectionString(device, azureIotHubProperties.getIotHostName()), IotHubClientProtocol.AMQPS);
         this.deviceClient.setMessageCallback(this, null);
         this.deviceClient.setConnectionStatusChangeCallback(this, null);
         this.loCommandSender = loCommandSender;
         this.counterProvider = counterProvider;
     }
 
-    public void setMultiplexingClientManager(MultiplexingClientManager multiplexingClientManager) {
-        this.multiplexingClientManager = multiplexingClientManager;
-    }
+    @Override
+    public IotHubMessageResult onCloudToDeviceMessageReceived(Message message, Object callbackContext) {
 
-    public DeviceClient getDeviceClient() {
-        return deviceClient;
+        LOG.debug("Received command for device: {} with content {}", getDeviceId(),
+                new String(message.getBytes(), Message.DEFAULT_IOTHUB_MESSAGE_CHARSET));
+        for (MessageProperty messageProperty : message.getProperties()) {
+            LOG.debug("{} : {}", messageProperty.getName(), messageProperty.getValue());
+        }
+        return loCommandSender.send(getDeviceId(), new String(message.getBytes()));
     }
 
     @Override
@@ -70,13 +77,18 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
         }
     }
 
+    public void sendMessage(String loMessage) {
+        Message message = new Message(loMessage);
+        sendMessage(message);
+    }
+
     private void reestablishSessionAsync(Throwable throwable) {
         new Thread(() -> {
             synchronized (reestablishSessionLock) {
                 // This device is always multiplexed so if multiplexing client is reconnecting we do not want to reconnect device client
                 if (multiplexingClientManager.getMultiplexedConnectionStatus() == IotHubConnectionStatus.CONNECTED
                         // we also do not want to reconnect device client in loop because of many messages
-                        && System.currentTimeMillis() - lastReestablishSessionTimestamp > REESTABLISH_SESSION_DELAY) {
+                        && System.currentTimeMillis() - lastReestablishSessionTimestamp > azureIotHubProperties.getDeviceReestablishSessionDelay()) {
                     TransportException transportExceptionFromThrowable = getTransportExceptionFromThrowable(throwable);
 
                     Failsafe.with(getReconnectRetryPolicy()).run(() -> {
@@ -102,43 +114,11 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
         }).start();
     }
 
-    private RetryPolicy<Void> getReconnectRetryPolicy() {
-        return new RetryPolicy<Void>()
-                .withMaxAttempts(-1)
-                .withBackoff(1, 60, ChronoUnit.SECONDS)
-                .onRetry(e -> LOG.error("Reconnecting device client " + getDeviceId() + " error because of " + e.getLastFailure().getMessage() + ", retrying ...", e.getLastFailure()));
-    }
-
-    @Override
-    public IotHubMessageResult onCloudToDeviceMessageReceived(Message message, Object callbackContext) {
-
-        LOG.debug("Received command for device: {} with content {}", getDeviceId(),
-                new String(message.getBytes(), Message.DEFAULT_IOTHUB_MESSAGE_CHARSET));
-        for (MessageProperty messageProperty : message.getProperties()) {
-            LOG.debug("{} : {}", messageProperty.getName(), messageProperty.getValue());
-        }
-        return loCommandSender.send(getDeviceId(), new String(message.getBytes()));
-    }
-
-    public String getDeviceId() {
-        return deviceClient.getConfig().getDeviceId();
-    }
-
-    @Override
-    public String toString() {
-        return getDeviceId();
-    }
-
-    public void sendMessage(String loMessage) {
-        Message message = new Message(loMessage);
-        sendMessage(message);
-    }
-
     private void sendMessage(Message message) {
         Failsafe.with(
             new RetryPolicy<IotHubStatusCode>()
-                .withMaxAttempts(RETRY_SEND_MESSAGE_MAX_ATTEMPTS)
-                .withDelay(RETRY_SEND_MESSAGE_DELAY)
+                .withMaxAttempts(azureIotHubProperties.getMessageSendMaxAttempts())
+                .withDelay(Duration.ofMillis(azureIotHubProperties.getMessageResendDelay()))
                 .handleResultIf(r -> IotHubStatusCode.OK != r)
                 .abortOn(e -> e instanceof TransportException && !((TransportException) e).isRetryable())
                 .onRetryScheduled(e -> reestablishSessionAsync(e.getLastFailure()))
@@ -156,7 +136,7 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
                 })
         ).getAsyncExecution(execution -> {
             counterProvider.getMesasageSentAttemptCounter().increment();
-            message.setExpiryTime(MESSAGE_EXPIRY_TIME);
+            message.setExpiryTime(azureIotHubProperties.getMessageExpiryTime());
             deviceClient.sendEventAsync(message, new MessageSentCallback() {
                 @Override
                 public void onMessageSent(Message message, IotHubClientException exception, Object context) {
@@ -165,6 +145,13 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
                 }
             }, null);
         });
+    }
+
+    private RetryPolicy<Void> getReconnectRetryPolicy() {
+        return new RetryPolicy<Void>()
+                .withMaxAttempts(-1)
+                .withBackoff(1, 60, ChronoUnit.SECONDS)
+                .onRetry(e -> LOG.error("Reconnecting device client " + getDeviceId() + " error because of " + e.getLastFailure().getMessage() + ", retrying ...", e.getLastFailure()));
     }
 
     private String getConnectionString(Device device, String host) {
@@ -179,12 +166,28 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
      * @return Instance of TransportException
      */
     private static TransportException getTransportExceptionFromThrowable(Throwable cause) {
-        TransportException transportException;
         if (cause instanceof TransportException) {
             return (TransportException) cause;
         }
-        transportException = new TransportException(cause);
+        TransportException transportException = new TransportException(cause);
         transportException.setRetryable(true);
         return transportException;
+    }
+
+    @Override
+    public String toString() {
+        return getDeviceId();
+    }
+
+    public String getDeviceId() {
+        return deviceClient.getConfig().getDeviceId();
+    }
+
+    public void setMultiplexingClientManager(MultiplexingClientManager multiplexingClientManager) {
+        this.multiplexingClientManager = multiplexingClientManager;
+    }
+
+    public DeviceClient getDeviceClient() {
+        return deviceClient;
     }
 }

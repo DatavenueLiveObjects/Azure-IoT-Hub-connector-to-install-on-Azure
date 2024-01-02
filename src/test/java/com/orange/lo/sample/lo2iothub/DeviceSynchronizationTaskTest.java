@@ -59,7 +59,7 @@ class DeviceSynchronizationTaskTest {
     private DeviceSynchronizationTask getDeviceSynchronizationTask(boolean deviceSynchronization, String loDevicesGroup) {
         AzureIotHubProperties azureIotHubProperties = new AzureIotHubProperties();
         azureIotHubProperties.setLoDevicesGroup(loDevicesGroup);
-        azureIotHubProperties.setSynchronizationThreadPoolSize(SYNCHRONIZATION_POOL_SIZE);
+        azureIotHubProperties.setDeviceRegistrationThreadPoolSize(SYNCHRONIZATION_POOL_SIZE);
         return new DeviceSynchronizationTask(iotHubAdapter, loAdapter, azureIotHubProperties, deviceSynchronization);
     }
 
@@ -72,7 +72,7 @@ class DeviceSynchronizationTaskTest {
         executor.awaitTermination(2, TimeUnit.SECONDS);
 
         verify(loAdapter, times(1)).getDevices(LO_DEVICES_GROUP);
-        verify(iotHubAdapter, times(3)).createOrGetIotDeviceClient(anyString());
+        verify(iotHubAdapter, times(3)).createOrGetDeviceClientManager(anyString());
         verify(iotHubAdapter, times(1)).getIotDeviceIds();
         verify(iotHubAdapter, times(1)).deleteDevice(anyString());
         verify(loAdapter, never()).startListeningForMessages();
@@ -87,7 +87,7 @@ class DeviceSynchronizationTaskTest {
         executor.awaitTermination(2, TimeUnit.SECONDS);
 
         verify(loAdapter, times(1)).getDevices(null);
-        verify(iotHubAdapter, times(1)).createOrGetIotDeviceClient(anyString());
+        verify(iotHubAdapter, times(1)).createOrGetDeviceClientManager(anyString());
         verify(iotHubAdapter, times(1)).getIotDeviceIds();
         verify(iotHubAdapter, times(0)).deleteDevice(anyString());
         verify(loAdapter, never()).startListeningForMessages();

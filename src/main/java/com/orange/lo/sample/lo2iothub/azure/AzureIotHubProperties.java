@@ -11,10 +11,13 @@ public class AzureIotHubProperties {
 
     private String iotConnectionString;
     private String iotHostName;
-    private int synchronizationThreadPoolSize;
-    private int synchronizationPeriod;
-    private int messagingThreadPoolSize;
+    private int deviceRegistrationThreadPoolSize;
+    private int deviceRegistrationPeriod;
+    private int deviceReestablishSessionDelay;
     private int deviceClientConnectionTimeout;
+    private int messageExpiryTime;
+    private int messageSendMaxAttempts;
+    private int messageResendDelay;
     private String tagPlatformKey;
     private String tagPlatformValue;
 
@@ -38,20 +41,12 @@ public class AzureIotHubProperties {
         this.iotConnectionString = iotConnectionString;
     }
 
-    public int getSynchronizationThreadPoolSize() {
-        return synchronizationThreadPoolSize;
+    public int getDeviceRegistrationThreadPoolSize() {
+        return deviceRegistrationThreadPoolSize;
     }
 
-    public void setSynchronizationThreadPoolSize(int synchronizationThreadPoolSize) {
-        this.synchronizationThreadPoolSize = synchronizationThreadPoolSize;
-    }
-
-    public int getMessagingThreadPoolSize() {
-        return messagingThreadPoolSize;
-    }
-
-    public void setMessagingThreadPoolSize(int messagingThreadPoolSize) {
-        this.messagingThreadPoolSize = messagingThreadPoolSize;
+    public void setDeviceRegistrationThreadPoolSize(int deviceRegistrationThreadPoolSize) {
+        this.deviceRegistrationThreadPoolSize = deviceRegistrationThreadPoolSize;
     }
 
     public int getDeviceClientConnectionTimeout() {
@@ -102,11 +97,43 @@ public class AzureIotHubProperties {
         this.loDevicesGroup = loDevicesGroup;
     }
 
-    public int getSynchronizationPeriod() {
-        return synchronizationPeriod;
+    public int getDeviceRegistrationPeriod() {
+        return deviceRegistrationPeriod;
     }
 
-    public void setSynchronizationPeriod(int synchronizationPeriod) {
-        this.synchronizationPeriod = synchronizationPeriod;
+    public void setDeviceRegistrationPeriod(int deviceRegistrationPeriod) {
+        this.deviceRegistrationPeriod = deviceRegistrationPeriod;
+    }
+
+    public int getDeviceReestablishSessionDelay() {
+        return deviceReestablishSessionDelay;
+    }
+
+    public void setDeviceReestablishSessionDelay(int deviceReestablishSessionDelay) {
+        this.deviceReestablishSessionDelay = deviceReestablishSessionDelay;
+    }
+
+    public int getMessageExpiryTime() {
+        return messageExpiryTime;
+    }
+
+    public void setMessageExpiryTime(int messageExpiryTime) {
+        this.messageExpiryTime = messageExpiryTime;
+    }
+
+    public int getMessageSendMaxAttempts() {
+        return messageSendMaxAttempts;
+    }
+
+    public void setMessageSendMaxAttempts(int messageSendMaxAttempts) {
+        this.messageSendMaxAttempts = messageSendMaxAttempts;
+    }
+
+    public int getMessageResendDelay() {
+        return messageResendDelay;
+    }
+
+    public void setMessageResendDelay(int messageResendDelay) {
+        this.messageResendDelay = messageResendDelay;
     }
 }

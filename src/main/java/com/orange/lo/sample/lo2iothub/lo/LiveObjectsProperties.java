@@ -19,8 +19,8 @@ public class LiveObjectsProperties {
     private int qos;
     private int keepAliveIntervalSeconds;
     private int pageSize;
-    private int synchronizationDeviceInterval;
     private boolean deviceSynchronization;
+    private int deviceSynchronizationInterval;
 
     public String getConnectorType() {
         return CONNECTOR_TYPE;
@@ -90,12 +90,12 @@ public class LiveObjectsProperties {
         this.pageSize = pageSize;
     }
 
-    public int getSynchronizationDeviceInterval() {
-        return synchronizationDeviceInterval;
+    public int getDeviceSynchronizationInterval() {
+        return deviceSynchronizationInterval;
     }
 
-    public void setSynchronizationDeviceInterval(int synchronizationDeviceInterval) {
-        this.synchronizationDeviceInterval = synchronizationDeviceInterval;
+    public void setDeviceSynchronizationInterval(int deviceSynchronizationInterval) {
+        this.deviceSynchronizationInterval = deviceSynchronizationInterval;
     }
 
     public boolean isDeviceSynchronization() {

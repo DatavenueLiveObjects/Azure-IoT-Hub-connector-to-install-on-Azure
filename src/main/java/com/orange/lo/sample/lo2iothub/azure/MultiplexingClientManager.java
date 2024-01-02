@@ -1,3 +1,10 @@
+/**
+ * Copyright (c) Orange. All Rights Reserved.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 package com.orange.lo.sample.lo2iothub.azure;
 
 import com.microsoft.azure.sdk.iot.device.*;
@@ -37,15 +44,16 @@ public class MultiplexingClientManager implements IotHubConnectionStatusChangeCa
     private Phaser phaser = new Phaser(1);
     private final Object operationLock = new Object();
     private ScheduledExecutorService registerTaskScheduler = Executors.newScheduledThreadPool(1);
+    private int reservations;
 
-    public MultiplexingClientManager(String host, int period, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint, IoTDeviceProvider ioTDeviceProvider) {
-        this.multiplexingClient = new MultiplexingClient(host, IotHubClientProtocol.AMQPS, null);
+    public MultiplexingClientManager(AzureIotHubProperties azureIotHubProperties, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint, IoTDeviceProvider ioTDeviceProvider) {
+        this.multiplexingClient = new MultiplexingClient(azureIotHubProperties.getIotHostName(), IotHubClientProtocol.AMQPS, null);
         this.multiplexedDeviceClientManagers = new HashMap<>();
         this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
         this.ioTDeviceProvider = ioTDeviceProvider;
         this.multiplexingClientId = multiplexingClientIndex.getAndIncrement();
         this.multiplexingClient.setConnectionStatusChangeCallback(this, this);
-        this.registerTaskScheduler.scheduleAtFixedRate(() -> registerDeviceClientsAsMultiplexed(), 0, period, TimeUnit.MILLISECONDS);
+        this.registerTaskScheduler.scheduleAtFixedRate(() -> registerDeviceClientsAsMultiplexed(), 0, azureIotHubProperties.getDeviceRegistrationPeriod(), TimeUnit.MILLISECONDS);
         this.openMultiplexingClient();
     }
 
@@ -79,6 +87,7 @@ public class MultiplexingClientManager implements IotHubConnectionStatusChangeCa
             LOG.info("Adding device client {} to be registered by multiplexing client: {}", deviceClientManager.getDeviceClient().getConfig().getDeviceId(), multiplexingClientId);
             phaser.register();
             this.deviceClientManagersToRegister.add(deviceClientManager);
+            this.reservations -= 1;
         }
         phaser.arriveAndAwaitAdvance();
         phaser.arriveAndDeregister();
@@ -106,11 +115,13 @@ public class MultiplexingClientManager implements IotHubConnectionStatusChangeCa
         }
     }
 
-
+    public void makeReservation() {
+        this.reservations += 1;
+    }
 
     public boolean hasSpace() {
         synchronized (this.operationLock) {
-            return this.multiplexedDeviceClientManagers.size() + deviceClientManagersToRegister.size() < MultiplexingClient.MAX_MULTIPLEX_DEVICE_COUNT_AMQPS;
+            return this.multiplexedDeviceClientManagers.size() + deviceClientManagersToRegister.size() + reservations < MultiplexingClient.MAX_MULTIPLEX_DEVICE_COUNT_AMQPS;
         }
     }
 
