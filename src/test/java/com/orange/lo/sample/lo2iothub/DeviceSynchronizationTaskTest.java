@@ -60,7 +60,7 @@ class DeviceSynchronizationTaskTest {
         AzureIotHubProperties azureIotHubProperties = new AzureIotHubProperties();
         azureIotHubProperties.setLoDevicesGroup(loDevicesGroup);
         azureIotHubProperties.setDeviceRegistrationThreadPoolSize(SYNCHRONIZATION_POOL_SIZE);
-        return new DeviceSynchronizationTask(iotHubAdapter, loAdapter, azureIotHubProperties, deviceSynchronization);
+        return new DeviceSynchronizationTask(iotHubAdapter, loAdapter, azureIotHubProperties, deviceSynchronization, null);
     }
 
     @Test
