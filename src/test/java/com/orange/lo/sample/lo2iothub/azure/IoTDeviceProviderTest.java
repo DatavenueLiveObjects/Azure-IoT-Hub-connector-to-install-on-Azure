@@ -86,5 +86,4 @@ class IoTDeviceProviderTest {
         Device device = ioTDeviceProvider.createDevice(DEVICE_ID);
         assertEquals(DEVICE_ID, device.getDeviceId());
     }
-
 }

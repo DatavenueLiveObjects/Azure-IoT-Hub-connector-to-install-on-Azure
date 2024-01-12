@@ -7,7 +7,6 @@
 
 package com.orange.lo.sample.lo2iothub;
 
-import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
 import com.orange.lo.sample.lo2iothub.azure.IotDeviceId;
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
@@ -71,8 +70,8 @@ public class DeviceSynchronizationTask implements Runnable {
             loIds = getDeviceIDsFromLO(azureIotHubProperties.getLoDevicesGroup());
         } catch (Exception e) {
             LOG.error("Problem with connection. Check LO credentials", e);
-            connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
         }
+
         if (!loIds.isEmpty()) {
             createOrGerDeviceClients(loIds);
         }
@@ -92,11 +91,11 @@ public class DeviceSynchronizationTask implements Runnable {
     }
 
     private void createOrGerDeviceClients(Set<String> loIds) throws InterruptedException {
-        int poolSize = azureIotHubProperties.getSynchronizationThreadPoolSize();
+        int poolSize = azureIotHubProperties.getDeviceRegistrationThreadPoolSize();
         ArrayBlockingQueue<Runnable> workQueue = new ArrayBlockingQueue<>(loIds.size());
         ThreadPoolExecutor synchronizingExecutor = new ThreadPoolExecutor(poolSize, poolSize, 10, TimeUnit.SECONDS, workQueue);
         List<Callable<Void>> collect = loIds.stream().map(id -> (Callable<Void>) () -> {
-            iotHubAdapter.createOrGetIotDeviceClient(id);
+            iotHubAdapter.createOrGetDeviceClientManager(id);
             return null;
         }).collect(Collectors.toList());
         synchronizingExecutor.invokeAll(collect);

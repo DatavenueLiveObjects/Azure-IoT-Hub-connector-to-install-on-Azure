@@ -1,3 +1,10 @@
+/**
+ * Copyright (c) Orange. All Rights Reserved.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 package com.orange.lo.sample.lo2iothub.azure;
 
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
@@ -22,25 +29,19 @@ import org.slf4j.LoggerFactory;
 public class DevicesManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private final AzureIotHubProperties azureIotHubProperties;
     private List<MultiplexingClientManager> multiplexingClientManagerList;
     private LoCommandSender loCommandSender;
 
-    private String host;
-    private final int period;
     private final ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
     private final IoTDeviceProvider ioTDeviceProvider;
     private Counters counterProvider;
-    private RetryPolicy<Void> messageRetryPolicy;
-    private Fallback<Void> sendMessageFallback;
 
-    public DevicesManager(String host, int period, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider, RetryPolicy<Void> messageRetryPolicy, Fallback<Void> sendMessageFallback) throws IotHubClientException {
-        this.host = host;
-        this.period = period;
+    public DevicesManager(AzureIotHubProperties azureIotHubProperties, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider) throws IotHubClientException {
+        this.azureIotHubProperties = azureIotHubProperties;
         this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
         this.ioTDeviceProvider = ioTDeviceProvider;
         this.counterProvider = counterProvider;
-        this.messageRetryPolicy = messageRetryPolicy;
-        this.sendMessageFallback = sendMessageFallback;
         this.multiplexingClientManagerList = Collections.synchronizedList(new LinkedList<>());
     }
 
@@ -57,8 +58,8 @@ public class DevicesManager {
         return false;
     }
 
-    public synchronized void createDeviceClient(Device device) {
-        DeviceClientManager deviceClientManager = new DeviceClientManager(device, host, loCommandSender, ioTDeviceProvider, counterProvider, messageRetryPolicy, sendMessageFallback);
+    public void createDeviceClient(Device device) {
+        DeviceClientManager deviceClientManager = new DeviceClientManager(device, azureIotHubProperties, loCommandSender, ioTDeviceProvider, counterProvider);
         MultiplexingClientManager freeMultiplexingClientManager = getFreeMultiplexingClientManager();
         deviceClientManager.setMultiplexingClientManager(freeMultiplexingClientManager);
         freeMultiplexingClientManager.registerDeviceClientManager(deviceClientManager);
@@ -81,13 +82,15 @@ public class DevicesManager {
         }
     }
 
-    private MultiplexingClientManager getFreeMultiplexingClientManager() {
+    private synchronized MultiplexingClientManager getFreeMultiplexingClientManager() {
         for (MultiplexingClientManager multiplexingClientManager : multiplexingClientManagerList) {
             if (multiplexingClientManager.hasSpace()) {
+                multiplexingClientManager.makeReservation();
                 return multiplexingClientManager;
             }
         }
-        MultiplexingClientManager freeMultiplexingClientManager = new MultiplexingClientManager(host, period, connectorHealthActuatorEndpoint, ioTDeviceProvider);
+        MultiplexingClientManager freeMultiplexingClientManager = new MultiplexingClientManager(azureIotHubProperties, connectorHealthActuatorEndpoint, ioTDeviceProvider);
+        freeMultiplexingClientManager.makeReservation();
         multiplexingClientManagerList.add(freeMultiplexingClientManager);
         return freeMultiplexingClientManager;
     }

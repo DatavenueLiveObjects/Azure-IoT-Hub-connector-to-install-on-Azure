@@ -18,7 +18,6 @@ import com.orange.lo.sample.lo2iothub.azure.DevicesManager;
 import com.orange.lo.sample.lo2iothub.azure.IoTDeviceProvider;
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.exceptions.InitializationException;
-import com.orange.lo.sample.lo2iothub.exceptions.SendMessageException;
 import com.orange.lo.sample.lo2iothub.lo.LiveObjectsProperties;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
@@ -28,7 +27,6 @@ import com.orange.lo.sdk.LOApiClient;
 import com.orange.lo.sdk.LOApiClientParameters;
 import com.orange.lo.sdk.rest.model.Device;
 import com.orange.lo.sdk.rest.model.Group;
-import net.jodah.failsafe.Fallback;
 import net.jodah.failsafe.RetryPolicy;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
@@ -93,8 +91,7 @@ public class ApplicationConfig {
                     LOG.debug("Initializing for {} ", azureIotHubProperties.getIotHostName());
                     IoTDeviceProvider ioTDeviceProvider = createIotDeviceProvider(azureIotHubProperties);
 
-                    DevicesManager deviceClientManager = new DevicesManager(
-                            azureIotHubProperties.getIotHostName(), azureIotHubProperties.getSynchronizationPeriod(), connectorHealthActuatorEndpoint, ioTDeviceProvider, counters, messageRetryPolicy(), sendMessageFallback());
+                    DevicesManager deviceClientManager = new DevicesManager(azureIotHubProperties, connectorHealthActuatorEndpoint, ioTDeviceProvider, counters);
 
                     IotHubAdapter iotHubAdapter = new IotHubAdapter(
                             ioTDeviceProvider,
@@ -113,11 +110,14 @@ public class ApplicationConfig {
                     try {
                         loAdapter = new LoAdapter(loApiClient, liveObjectsProperties.getPageSize(),
                                 groupRetryPolicy, deviceRetryPolicy);
-
                     } catch (Exception e) {
                         LOG.error("Problem with connection. Check iot hub and LO credentials", e);
-                        connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
                         problemWithConnection = true;
+                        try {
+                            iotHubAdapter.getIotDeviceIds();
+                        } catch (Exception ex) {
+                            connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
+                        }
                     }
 
                     LoCommandSender loCommandSender = new LoCommandSender(loApiClient, objectMapper, commandRetryPolicy);
@@ -132,13 +132,11 @@ public class ApplicationConfig {
                         connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
                     }
 
-                    int synchronizationDeviceInterval = liveObjectsProperties.getSynchronizationDeviceInterval();
-                    Duration period = Duration.ofSeconds(synchronizationDeviceInterval);
-                    taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, period);
-
-                    if (!problemWithConnection)
+                    if (!problemWithConnection) {
+                        Duration deviceSynchronizationInterval = Duration.ofSeconds(liveObjectsProperties.getDeviceSynchronizationInterval());
+                        taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, deviceSynchronizationInterval);
                         loAdapter.startListeningForMessages();
-
+                    }
 
                 } catch (IotHubClientException e) {
                     throw new InitializationException(e);
@@ -176,17 +174,6 @@ public class ApplicationConfig {
                 .connectorType(loProperties.getConnectorType())
                 .connectorVersion(getConnectorVersion())
                 .build();
-    }
-
-    public Fallback<Void> sendMessageFallback() {
-        return Fallback.ofException(e -> new SendMessageException(e.getLastFailure()));
-    }
-
-    public RetryPolicy<Void> messageRetryPolicy() {
-        return new RetryPolicy<Void>().handleIf(e -> e instanceof IllegalStateException)
-                .withMaxAttempts(-1)
-                .withBackoff(1, 60, ChronoUnit.SECONDS)
-                .withMaxDuration(Duration.ofMinutes(50));
     }
 
     public RetryPolicy<Void> restCommandRetryPolicy() {
