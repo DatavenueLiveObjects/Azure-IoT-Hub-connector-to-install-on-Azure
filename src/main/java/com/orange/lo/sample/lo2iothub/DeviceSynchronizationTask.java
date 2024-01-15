@@ -12,6 +12,9 @@ import com.orange.lo.sample.lo2iothub.azure.IotDeviceId;
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sdk.rest.model.Device;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.invoke.MethodHandles;
 import java.util.List;
@@ -21,10 +24,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class DeviceSynchronizationTask implements Runnable {
 
@@ -63,7 +62,12 @@ public class DeviceSynchronizationTask implements Runnable {
     }
 
     private void createDeviceClientsAndSynchronizeDevicesFromLOToIoTHub() throws InterruptedException {
-        Set<String> loIds = getDeviceIDsFromLO(azureIotHubProperties.getLoDevicesGroup());
+        Set<String> loIds = null;
+        try {
+            loIds = getDeviceIDsFromLO(azureIotHubProperties.getLoDevicesGroup());
+        } catch (Exception e) {
+            LOG.error("Problem with connection. Check LO credentials", e);
+        }
         if (!loIds.isEmpty()) {
             createOrGerDeviceClients(loIds);
         }

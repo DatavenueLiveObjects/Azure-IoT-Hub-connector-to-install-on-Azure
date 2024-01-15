@@ -48,7 +48,7 @@ class IotHubAdapterTest {
 
     @BeforeEach
     void setUp() throws URISyntaxException {
-        iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, devicesManager, true);
+        iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, devicesManager, true, null);
     }
 
     @Test
@@ -101,7 +101,7 @@ class IotHubAdapterTest {
 
     @Test
     void shouldThrowDeviceSynchronizationExceptionDuringCreatingDeviceClientWhenSynchronizationIsDisabled() {
-        IotHubAdapter iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, devicesManager, false);
+        IotHubAdapter iotHubAdapter = new IotHubAdapter(ioTDeviceProvider, devicesManager, false, null);
 
         when(ioTDeviceProvider.getDevice(DEVICE_ID)).thenReturn(null);
 
