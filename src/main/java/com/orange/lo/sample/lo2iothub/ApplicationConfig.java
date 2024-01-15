@@ -15,7 +15,6 @@ import com.microsoft.azure.sdk.iot.service.registry.RegistryClient;
 import com.microsoft.azure.sdk.iot.service.twin.TwinClient;
 import com.orange.lo.sample.lo2iothub.azure.*;
 import com.orange.lo.sample.lo2iothub.exceptions.InitializationException;
-import com.orange.lo.sample.lo2iothub.exceptions.SendMessageException;
 import com.orange.lo.sample.lo2iothub.lo.LiveObjectsProperties;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
@@ -34,7 +33,6 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
-import net.jodah.failsafe.Fallback;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.slf4j.Logger;
@@ -130,9 +128,8 @@ public class ApplicationConfig {
                         connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
                     }
 
-                    int synchronizationDeviceInterval = liveObjectsProperties.getSynchronizationDeviceInterval();
-                    Duration period = Duration.ofSeconds(synchronizationDeviceInterval);
-                    taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, period);
+                    Duration deviceSynchronizationInterval = Duration.ofSeconds(liveObjectsProperties.getDeviceSynchronizationInterval());
+                    taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, deviceSynchronizationInterval);
 
                     if (!problemWithConnection)
                         loAdapter.startListeningForMessages();
