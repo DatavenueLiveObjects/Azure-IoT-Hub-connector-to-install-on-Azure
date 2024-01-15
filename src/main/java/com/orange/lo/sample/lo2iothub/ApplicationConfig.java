@@ -109,11 +109,14 @@ public class ApplicationConfig {
                     try {
                         loAdapter = new LoAdapter(loApiClient, liveObjectsProperties.getPageSize(),
                                 groupRetryPolicy, deviceRetryPolicy);
-
                     } catch (Exception e) {
                         LOG.error("Problem with connection. Check iot hub and LO credentials", e);
-                        connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
                         problemWithConnection = true;
+                        try {
+                            iotHubAdapter.getIotDeviceIds();
+                        } catch (Exception ex) {
+                            connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
+                        }
                     }
 
                     LoCommandSender loCommandSender = new LoCommandSender(loApiClient, objectMapper, commandRetryPolicy);
@@ -122,18 +125,17 @@ public class ApplicationConfig {
                     DeviceSynchronizationTask deviceSynchronizationTask = null;
                     try {
                         deviceSynchronizationTask = new DeviceSynchronizationTask(
-                                iotHubAdapter, loAdapter, azureIotHubProperties, liveObjectsProperties.isDeviceSynchronization(), connectorHealthActuatorEndpoint);
+                                iotHubAdapter, loAdapter, azureIotHubProperties, liveObjectsProperties.isDeviceSynchronization());
                     } catch (Exception e) {
                         LOG.error("Problem with connection. Check iot hub and LO credentials", e);
                         connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
                     }
 
-                    Duration deviceSynchronizationInterval = Duration.ofSeconds(liveObjectsProperties.getDeviceSynchronizationInterval());
-                    taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, deviceSynchronizationInterval);
-
-                    if (!problemWithConnection)
+                    if (!problemWithConnection) {
+                        Duration deviceSynchronizationInterval = Duration.ofSeconds(liveObjectsProperties.getDeviceSynchronizationInterval());
+                        taskScheduler.scheduleAtFixedRate(deviceSynchronizationTask, deviceSynchronizationInterval);
                         loAdapter.startListeningForMessages();
-
+                    }
 
                 } catch (IotHubClientException e) {
                     throw new InitializationException(e);

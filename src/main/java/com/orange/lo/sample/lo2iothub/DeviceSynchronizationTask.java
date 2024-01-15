@@ -7,12 +7,10 @@
 
 package com.orange.lo.sample.lo2iothub;
 
-import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
 import com.orange.lo.sample.lo2iothub.azure.IotDeviceId;
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
-import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
 import com.orange.lo.sdk.rest.model.Device;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -35,15 +33,13 @@ public class DeviceSynchronizationTask implements Runnable {
     private final LoAdapter loAdapter;
     private final AzureIotHubProperties azureIotHubProperties;
     private final boolean deviceSynchronization;
-    private final ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
 
     public DeviceSynchronizationTask(IotHubAdapter iotHubAdapter, LoAdapter loAdapter,
-                                     AzureIotHubProperties azureIotHubProperties, boolean deviceSynchronization, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint) {
+                                     AzureIotHubProperties azureIotHubProperties, boolean deviceSynchronization) {
         this.iotHubAdapter = iotHubAdapter;
         this.loAdapter = loAdapter;
         this.azureIotHubProperties = azureIotHubProperties;
         this.deviceSynchronization = deviceSynchronization;
-        this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
     }
 
     @Override
@@ -71,7 +67,6 @@ public class DeviceSynchronizationTask implements Runnable {
             loIds = getDeviceIDsFromLO(azureIotHubProperties.getLoDevicesGroup());
         } catch (Exception e) {
             LOG.error("Problem with connection. Check LO credentials", e);
-            connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
         }
         if (!loIds.isEmpty()) {
             createOrGerDeviceClients(loIds);
