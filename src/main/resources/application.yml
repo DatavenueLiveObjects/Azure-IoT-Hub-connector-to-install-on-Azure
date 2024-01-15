@@ -9,16 +9,20 @@ tenant-list:
       keep-alive-interval-seconds: 30
       page-size: 20
       device-synchronization: true
-      synchronization-device-interval: 86400
+      device-synchronization-interval: 86400 # in seconds - 24h
       mqtt-persistence-dir: ${basedir:.}/temp/
 
     azure-iot-hub-list:
       -
         iot-connection-string: YOUR_IOT_CONNECTION_STRING
         iot-host-name: YOUR_IOT_HOST_NAME
-        synchronization-thread-pool-size: 10
-        synchronization-period: 200
+        device-registration-thread-pool-size: 10
+        device-registration-period: 200 # in milliseconds - 200ms
+        device-reestablish-session-delay: 10000 # in milliseconds - 10s
         device-client-connection-timeout: 5000
+        message-expiry-time: 60000 # in milliseconds - 60s
+        message-send-max-attempts: 10
+        message-resend-delay: 10000 # in milliseconds - 10s
         tagPlatformKey: platform
         tagPlatformValue: LiveObjectsGroupIoT1
     
@@ -29,8 +33,13 @@ tenant-list:
       -
         iot-connection-string: YOUR_IOT_CONNECTION_STRING
         iot-host-name: YOUR_IOT_HOST_NAME
-        synchronization-thread-pool-size: 40
+        device-registration-thread-pool-size: 10
+        device-registration-period: 200 # in milliseconds - 200ms
+        device-reestablish-session-delay: 10000 # in milliseconds - 10s
         device-client-connection-timeout: 5000
+        message-expiry-time: 60000 # in milliseconds - 60s
+        message-send-max-attempts: 10
+        message-resend-delay: 10000 # in milliseconds - 10s
         tagPlatformKey: platform
         tagPlatformValue: LiveObjectsGroupIoT1
 

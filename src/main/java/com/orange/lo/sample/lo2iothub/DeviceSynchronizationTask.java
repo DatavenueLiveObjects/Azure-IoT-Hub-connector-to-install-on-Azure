@@ -7,6 +7,7 @@
 
 package com.orange.lo.sample.lo2iothub;
 
+import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.orange.lo.sample.lo2iothub.azure.AzureIotHubProperties;
 import com.orange.lo.sample.lo2iothub.azure.IotDeviceId;
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
@@ -70,8 +71,8 @@ public class DeviceSynchronizationTask implements Runnable {
             loIds = getDeviceIDsFromLO(azureIotHubProperties.getLoDevicesGroup());
         } catch (Exception e) {
             LOG.error("Problem with connection. Check LO credentials", e);
+            connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
         }
-
         if (!loIds.isEmpty()) {
             createOrGerDeviceClients(loIds);
         }

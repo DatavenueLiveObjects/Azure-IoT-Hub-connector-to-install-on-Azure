@@ -15,13 +15,14 @@ import com.microsoft.azure.sdk.iot.service.registry.RegistryClient;
 import com.microsoft.azure.sdk.iot.service.twin.Twin;
 import com.microsoft.azure.sdk.iot.service.twin.TwinClient;
 import com.orange.lo.sample.lo2iothub.exceptions.IotDeviceProviderException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDeviceProvider {
 
@@ -65,7 +66,7 @@ public class IoTDeviceProvider {
         List<IotDeviceId> list = new ArrayList<>();
         try {
             String selectingQuery = "SELECT * FROM devices";
-            if (queryByTags) {
+            if(queryByTags) {
                 selectingQuery += " WHERE tags." + tagPlatformKey + "='" + tagPlatformValue + "'";
             }
             TwinQueryResponse query = twinClient
