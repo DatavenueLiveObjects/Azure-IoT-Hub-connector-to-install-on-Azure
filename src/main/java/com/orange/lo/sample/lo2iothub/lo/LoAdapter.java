@@ -145,4 +145,9 @@ public class LoAdapter {
         DataManagementFifo dataManagementFifo = loApiClient.getDataManagementFifo();
         dataManagementFifo.connectAndSubscribe();
     }
+
+    public void connect() {
+        DataManagementFifo dataManagementFifo = loApiClient.getDataManagementFifo();
+        dataManagementFifo.connect();
+    }
 }

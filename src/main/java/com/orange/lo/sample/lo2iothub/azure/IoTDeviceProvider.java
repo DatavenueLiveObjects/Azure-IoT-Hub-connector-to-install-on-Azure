@@ -12,6 +12,7 @@ import com.microsoft.azure.sdk.iot.service.exceptions.IotHubNotFoundException;
 import com.microsoft.azure.sdk.iot.service.query.TwinQueryResponse;
 import com.microsoft.azure.sdk.iot.service.registry.Device;
 import com.microsoft.azure.sdk.iot.service.registry.RegistryClient;
+import com.microsoft.azure.sdk.iot.service.registry.RegistryStatistics;
 import com.microsoft.azure.sdk.iot.service.twin.Twin;
 import com.microsoft.azure.sdk.iot.service.twin.TwinClient;
 import com.orange.lo.sample.lo2iothub.exceptions.IotDeviceProviderException;
@@ -106,6 +107,17 @@ public class IoTDeviceProvider {
             twinClient.patch(twin);
         } catch (IotHubException | IOException e) {
             throw new IotDeviceProviderException("Error while creating device", e);
+        }
+    }
+
+    public void logRegistryClientStatistics() {
+        try {
+            RegistryStatistics statistics = registryClient.getStatistics();
+            LOG.info("Total device count: {}", statistics.getTotalDeviceCount());
+            LOG.info("Enabled device count: {}", statistics.getEnabledDeviceCount());
+            LOG.info("Disabled device count: {}", statistics.getDisabledDeviceCount());
+        } catch (Exception e) {
+            throw new IotDeviceProviderException("Error while getting RegistryClient statistics", e);
         }
     }
 }
