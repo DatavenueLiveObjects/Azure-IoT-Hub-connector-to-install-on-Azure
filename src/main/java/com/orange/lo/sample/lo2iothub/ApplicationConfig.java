@@ -88,6 +88,8 @@ public class ApplicationConfig {
             azureIotHubList.forEach(azureIotHubProperties -> {
                 try {
                     LOG.debug("Initializing for {} ", azureIotHubProperties.getIotHostName());
+                    LoAdapter loAdapter = null;
+
                     IoTDeviceProvider ioTDeviceProvider = createIotDeviceProvider(azureIotHubProperties);
 
                     DevicesManager deviceClientManager = new DevicesManager(azureIotHubProperties, connectorHealthActuatorEndpoint, ioTDeviceProvider, counters);
@@ -100,23 +102,25 @@ public class ApplicationConfig {
                     );
 
                     LOApiClientParameters loApiClientParameters = loApiClientParameters(liveObjectsProperties,
-                            azureIotHubProperties, iotHubAdapter);
+                            azureIotHubProperties, iotHubAdapter, loAdapter);
                     LOApiClient loApiClient = new LOApiClient(loApiClientParameters);
+
                     connectorHealthActuatorEndpoint.addLoApiClient(loApiClient);
 
-                    LoAdapter loAdapter = null;
+
                     boolean problemWithConnection = false;
                     try {
                         loAdapter = new LoAdapter(loApiClient, liveObjectsProperties.getPageSize(),
-                                groupRetryPolicy, deviceRetryPolicy);
+                                groupRetryPolicy, deviceRetryPolicy, liveObjectsProperties.getQos());
                         loAdapter.connect();
                     } catch (Exception e) {
                         LOG.error("Problem with connection. Check LO credentials", e);
                         problemWithConnection = true;
                     }
 
-                    LoCommandSender loCommandSender = new LoCommandSender(loApiClient, objectMapper, commandRetryPolicy);
+                    LoCommandSender loCommandSender = new LoCommandSender(loAdapter, objectMapper, commandRetryPolicy);
                     deviceClientManager.setLoCommandSender(loCommandSender);
+                    deviceClientManager.setLoAdapter(loAdapter);
 
                     DeviceSynchronizationTask deviceSynchronizationTask = null;
                     try {
@@ -152,7 +156,7 @@ public class ApplicationConfig {
     }
 
     private LOApiClientParameters loApiClientParameters(LiveObjectsProperties loProperties,
-                                                        AzureIotHubProperties azureIotHubProperties, IotHubAdapter iotHubAdapter) {
+                                                        AzureIotHubProperties azureIotHubProperties, IotHubAdapter iotHubAdapter, LoAdapter loAdapter) {
 
         List<String> topics = Lists.newArrayList(azureIotHubProperties.getLoMessagesTopic());
         if (loProperties.isDeviceSynchronization()) {
@@ -162,12 +166,13 @@ public class ApplicationConfig {
                 .hostname(loProperties.getHostname())
                 .apiKey(loProperties.getApiKey())
                 .automaticReconnect(true)
+                .manualAck(true)
                 .messageQos(loProperties.getQos())
                 .keepAliveIntervalSeconds(loProperties.getKeepAliveIntervalSeconds())
                 .connectionTimeout(loProperties.getConnectionTimeout())
                 .mqttPersistenceDataDir(loProperties.getMqttPersistenceDir())
                 .topics(topics)
-                .dataManagementMqttCallback(new MessageHandler(iotHubAdapter, counters))
+                .dataManagementMqttCallback(new MessageHandler(iotHubAdapter, loAdapter, counters))
                 .connectorType(loProperties.getConnectorType())
                 .connectorVersion(getConnectorVersion())
                 .build();

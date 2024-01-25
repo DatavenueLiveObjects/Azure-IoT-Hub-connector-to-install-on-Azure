@@ -9,6 +9,7 @@ package com.orange.lo.sample.lo2iothub.azure;
 
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
 import com.microsoft.azure.sdk.iot.service.registry.Device;
+import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 
 import java.lang.invoke.MethodHandles;
@@ -36,6 +37,7 @@ public class DevicesManager {
     private final ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
     private final IoTDeviceProvider ioTDeviceProvider;
     private Counters counterProvider;
+    private LoAdapter loAdapter;
 
     public DevicesManager(AzureIotHubProperties azureIotHubProperties, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider) throws IotHubClientException {
         this.azureIotHubProperties = azureIotHubProperties;
@@ -49,6 +51,10 @@ public class DevicesManager {
         this.loCommandSender = loCommandSender;
     }
 
+    public void setLoAdapter(LoAdapter loAdapter) {
+        this.loAdapter = loAdapter;
+    }
+
     public synchronized boolean containsDeviceClient(String deviceClientId) {
         for (MultiplexingClientManager multiplexingClientManager : multiplexingClientManagerList) {
             if (multiplexingClientManager.deviceExisted(deviceClientId)) {
@@ -59,7 +65,7 @@ public class DevicesManager {
     }
 
     public void createDeviceClient(Device device) {
-        DeviceClientManager deviceClientManager = new DeviceClientManager(device, azureIotHubProperties, loCommandSender, ioTDeviceProvider, counterProvider);
+        DeviceClientManager deviceClientManager = new DeviceClientManager(device, azureIotHubProperties, loCommandSender, loAdapter, ioTDeviceProvider, counterProvider);
         MultiplexingClientManager freeMultiplexingClientManager = getFreeMultiplexingClientManager();
         deviceClientManager.setMultiplexingClientManager(freeMultiplexingClientManager);
         freeMultiplexingClientManager.registerDeviceClientManager(deviceClientManager);

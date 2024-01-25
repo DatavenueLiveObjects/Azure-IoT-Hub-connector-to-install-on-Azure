@@ -12,6 +12,7 @@ import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
 import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.microsoft.azure.sdk.iot.device.transport.TransportException;
 import com.microsoft.azure.sdk.iot.service.registry.Device;
+import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
 import net.jodah.failsafe.Failsafe;
@@ -35,12 +36,14 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
     private final LoCommandSender loCommandSender;
     private MultiplexingClientManager multiplexingClientManager;
     private final AzureIotHubProperties azureIotHubProperties;
+    private final LoAdapter loAdapter;
     private final IoTDeviceProvider ioTDeviceProvider;
 
     private Counters counterProvider;
 
-    public DeviceClientManager(Device device, AzureIotHubProperties azureIotHubProperties, LoCommandSender loCommandSender, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider) {
+    public DeviceClientManager(Device device, AzureIotHubProperties azureIotHubProperties, LoCommandSender loCommandSender, LoAdapter loAdapter, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider) {
         this.azureIotHubProperties = azureIotHubProperties;
+        this.loAdapter = loAdapter;
         this.ioTDeviceProvider = ioTDeviceProvider;
         this.deviceClient = new DeviceClient(getConnectionString(device, azureIotHubProperties.getIotHostName()), IotHubClientProtocol.AMQPS);
         this.deviceClient.setMessageCallback(this, null);
@@ -77,9 +80,9 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
         }
     }
 
-    public void sendMessage(String loMessage) {
+    public void sendMessage(int loMessageId, String loMessage) {
         Message message = new Message(loMessage);
-        sendMessage(message);
+        sendMessage(loMessageId, message);
     }
 
     private void reestablishSessionAsync(Throwable throwable) {
@@ -114,7 +117,7 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
         }).start();
     }
 
-    private void sendMessage(Message message) {
+    private void sendMessage(int loMessageId, Message message) {
         Failsafe.with(
             new RetryPolicy<IotHubStatusCode>()
                 .withMaxAttempts(azureIotHubProperties.getMessageSendMaxAttempts())
@@ -129,10 +132,12 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
                 .onSuccess(r -> {
                     LOG.debug("IoT Hub responded to message with id {} from {} with status {}", message.getMessageId(), getDeviceId(), r.getResult().name());
                     counterProvider.getMesasageSentCounter().increment();
+                    loAdapter.sendMessageAck(loMessageId);
                 })
                 .onFailure(r -> {
                     LOG.error("Cannot send message with id " + message.getMessageId() + " from " + getDeviceId(), r.getFailure());
                     counterProvider.getMesasageSentFailedCounter().increment();
+                    loAdapter.sendMessageAck(loMessageId);
                 })
         ).getAsyncExecution(execution -> {
             counterProvider.getMesasageSentAttemptCounter().increment();

@@ -9,6 +9,7 @@ package com.orange.lo.sample.lo2iothub;
 
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
+import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
 import com.orange.lo.sdk.fifomqtt.DataManagementFifoCallback;
 
@@ -31,57 +32,64 @@ public class MessageHandler implements DataManagementFifoCallback {
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private final IotHubAdapter iotHubAdapter;
+    private final LoAdapter loAdapter;
     private final Counters counterProvider;
 
-    public MessageHandler(IotHubAdapter iotHubAdapter, Counters counterProvider) {
+    public MessageHandler(IotHubAdapter iotHubAdapter, LoAdapter loAdapter, Counters counterProvider) {
         this.iotHubAdapter = iotHubAdapter;
+        this.loAdapter = loAdapter;
         this.counterProvider = counterProvider;
     }
 
-    public void onMessage(String message) {
+    @Override
+    public void onMessage(int loMessageId, String message) {
         String messageType = getMessageType(message);
         LOG.info("Received message of the type: {}", messageType);
         switch (messageType) {
             case DATA_MESSAGE_TYPE:
-                handleDataMessage(message);
+                handleDataMessage(loMessageId, message);
                 break;
             case DEVICE_CREATED_MESSAGE_TYPE:
-                handleDeviceCreationEvent(message);
+                handleDeviceCreationEvent(loMessageId, message);
                 break;
             case DEVICE_DELETED_MESSAGE_TYPE:
-                handleDeviceRemovalEvent(message);
+                handleDeviceRemovalEvent(loMessageId, message);
                 break;
             default:
                 LOG.error("Unknown message type of message: {}", message);
         }
     }
 
-    private void handleDataMessage(String message) {
+    private void handleDataMessage(int loMessageId, String message) {
         counterProvider.getMesasageReadCounter().increment();
         try {
             String sourceDeviceId = getSourceDeviceId(message);
-            iotHubAdapter.sendMessage(sourceDeviceId, message);
+            iotHubAdapter.sendMessage(sourceDeviceId, loMessageId, message);
         } catch (JSONException e) {
             LOG.error("Cannot read source device id from message", e);
             counterProvider.getMesasageSentFailedCounter().increment();
+            loAdapter.sendMessageAck(loMessageId);
         } catch (DeviceSynchronizationException e) {
             LOG.error("Cannot send message to IoT Hub because device doesn't exist", e);
             counterProvider.getMesasageSentFailedCounter().increment();
+            loAdapter.sendMessageAck(loMessageId);
         } catch (Exception e) {
             LOG.error("Cannot send message to IoT Hub", e);
             counterProvider.getMesasageSentFailedCounter().increment();
+            loAdapter.sendMessageAck(loMessageId);
         }
     }
 
-    private void handleDeviceCreationEvent(String message) {
+    private void handleDeviceCreationEvent(int loMessageId, String message) {
         Optional<String> deviceId = getDeviceId(message);
         deviceId.ifPresent(iotHubAdapter::createOrGetDeviceClientManager);
-
+        loAdapter.sendMessageAck(loMessageId);
     }
 
-    private void handleDeviceRemovalEvent(String message) {
+    private void handleDeviceRemovalEvent(int loMessageId, String message) {
         Optional<String> deviceId = getDeviceId(message);
         deviceId.ifPresent(iotHubAdapter::deleteDevice);
+        loAdapter.sendMessageAck(loMessageId);
     }
 
     private static String getSourceDeviceId(String msg) throws JSONException {

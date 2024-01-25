@@ -69,6 +69,9 @@ class LoAdapterTest {
     private Groups groups;
     @Mock
     private Inventory inventory;
+    @Mock
+    private LiveObjectsProperties liveObjectsProperties;
+
     private LoAdapter loAdapter;
 
     @BeforeEach
@@ -78,8 +81,9 @@ class LoAdapterTest {
         when(deviceManagement.getGroups()).thenReturn(groups);
         when(groups.getGroups(any(GetGroupsFilter.class))).thenReturn(GROUP_INSTANCES_FROM_LO);
         when(inventory.getDevices(any(GetDevicesFilter.class))).thenAnswer(LoAdapterTest::getObjects);
+        when(liveObjectsProperties.getQos()).thenReturn(1);
 
-        this.loAdapter = new LoAdapter(loApiClient, PAGE_SIZE, new RetryPolicy<>(), new RetryPolicy<>());
+        this.loAdapter = new LoAdapter(loApiClient, PAGE_SIZE, new RetryPolicy<>(), new RetryPolicy<>(), liveObjectsProperties.getQos());
     }
 
     @NotNull

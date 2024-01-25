@@ -29,7 +29,7 @@ import static org.mockito.Mockito.when;
 class LoCommandSenderTest {
 
     @Mock
-    private LOApiClient loApiClient;
+    private LoAdapter loAdapter;
     @Mock
     private DeviceManagement deviceManagement;
     @Mock
@@ -39,15 +39,13 @@ class LoCommandSenderTest {
 
     @BeforeEach
     void setUp() {
-        when(loApiClient.getDeviceManagement()).thenReturn(deviceManagement);
-        when(deviceManagement.getCommands()).thenReturn(commands);
-        this.loCommandSender = new LoCommandSender(loApiClient, new ObjectMapper(), new RetryPolicy<>());
+        this.loCommandSender = new LoCommandSender(loAdapter, new ObjectMapper(), new RetryPolicy<>());
     }
 
     @Test
     void shouldSendCommandToCommandsEndpoint() {
 
         loCommandSender.send("device-Id", "{}");
-        verify(commands, times(1)).addCommand(eq("device-Id"), any(CommandAddRequest.class));
+        verify(loAdapter, times(1)).sendCommand(eq("device-Id"), any(CommandAddRequest.class));
     }
 }

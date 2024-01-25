@@ -9,11 +9,9 @@ package com.orange.lo.sample.lo2iothub.lo;
 
 import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
 import com.orange.lo.sdk.LOApiClient;
-import com.orange.lo.sdk.fifomqtt.DataManagementFifo;
-import com.orange.lo.sdk.rest.devicemanagement.GetDevicesFilter;
-import com.orange.lo.sdk.rest.devicemanagement.GetGroupsFilter;
-import com.orange.lo.sdk.rest.devicemanagement.Groups;
-import com.orange.lo.sdk.rest.devicemanagement.Inventory;
+import com.orange.lo.sdk.rest.devicemanagement.*;
+import com.orange.lo.sdk.rest.model.CommandAddRequest;
+import com.orange.lo.sdk.rest.model.CommandResponse;
 import com.orange.lo.sdk.rest.model.Device;
 import com.orange.lo.sdk.rest.model.Group;
 import net.jodah.failsafe.Failsafe;
@@ -34,14 +32,16 @@ public class LoAdapter {
     private static final String DEFAULT_GROUP_ID = "root";
 
     private final LOApiClient loApiClient;
+    private final int qos;
     private final Map<String, Group> groupsMap;
     private final int pageSize;
     private final RetryPolicy<List<Group>> groupRetryPolicy;
     private final RetryPolicy<List<Device>> deviceRetryPolicy;
 
     public LoAdapter(LOApiClient loApiClient, int pageSize, RetryPolicy<List<Group>> groupRetryPolicy,
-                     RetryPolicy<List<Device>> deviceRetryPolicy) {
+                     RetryPolicy<List<Device>> deviceRetryPolicy, int qos) {
         this.loApiClient = loApiClient;
+        this.qos = qos;
         this.groupsMap = new HashMap<>();
         this.pageSize = pageSize;
         this.groupRetryPolicy = groupRetryPolicy;
@@ -51,6 +51,54 @@ public class LoAdapter {
         } catch (Exception e) {
             throw new DeviceSynchronizationException("Problem with connection. Check iot hub and LO credentials");
         }
+    }
+
+    public void connect() {
+        LOG.info("Connecting to LO...");
+        loApiClient.getDataManagementFifo().connect();
+    }
+
+    public void startListeningForMessages() {
+        LOG.info("Starting listening for messages...");
+        loApiClient.getDataManagementFifo().connectAndSubscribe();
+    }
+
+    public void sendMessageAck(int messageId) {
+        LOG.debug("Sending ack for message with id: {}", messageId);
+        loApiClient.getDataManagementFifo().sendAck(messageId, qos);
+    }
+
+    public CommandResponse sendCommand(String deviceId, CommandAddRequest commandAddRequest) {
+        LOG.debug("Sending command {} to device {}", commandAddRequest, deviceId);
+        return loApiClient.getDeviceManagement().getCommands().addCommand(deviceId, commandAddRequest);
+    }
+
+    public List<Device> getDevices(String groupName) {
+        List<Device> devices = new ArrayList<>(pageSize);
+        Inventory inventory = loApiClient.getDeviceManagement().getInventory();
+
+        List<String> deviceGroups = getGroupWithSubgroups(groupName);
+
+        deviceGroups.forEach(groupId -> {
+            List<Device> partDevices = new ArrayList<>();
+            GetDevicesFilter devicesFilter = new GetDevicesFilter().withGroupId(groupId).withLimit(pageSize);
+
+            while (true) {
+                if (partDevices.size() > 0) {
+                    devicesFilter.withBookmarkId(partDevices.get(partDevices.size() - 1).getId());
+                }
+                List<Device> loDevices = Failsafe.with(deviceRetryPolicy)
+                        .get(() -> inventory.getDevices(devicesFilter));
+                LOG.trace("Got {} devices", loDevices.size());
+                partDevices.addAll(loDevices);
+                if (loDevices.size() < pageSize) {
+                    devices.addAll(partDevices);
+                    break;
+                }
+            }
+        });
+        LOG.trace("Devices: {}", devices.size());
+        return devices;
     }
 
     private void initialize() {
@@ -82,34 +130,6 @@ public class LoAdapter {
         }
     }
 
-    public List<Device> getDevices(String groupName) {
-        List<Device> devices = new ArrayList<>(pageSize);
-        Inventory inventory = loApiClient.getDeviceManagement().getInventory();
-
-        List<String> deviceGroups = getGroupWithSubgroups(groupName);
-
-        deviceGroups.forEach(groupId -> {
-            List<Device> partDevices = new ArrayList<>();
-            GetDevicesFilter devicesFilter = new GetDevicesFilter().withGroupId(groupId).withLimit(pageSize);
-
-            while (true) {
-                if (partDevices.size() > 0) {
-                    devicesFilter.withBookmarkId(partDevices.get(partDevices.size() - 1).getId());
-                }
-                List<Device> loDevices = Failsafe.with(deviceRetryPolicy)
-                        .get(() -> inventory.getDevices(devicesFilter));
-                LOG.trace("Got {} devices", loDevices.size());
-                partDevices.addAll(loDevices);
-                if (loDevices.size() < pageSize) {
-                    devices.addAll(partDevices);
-                    break;
-                }
-            }
-        });
-        LOG.trace("Devices: {}", devices.size());
-        return devices;
-    }
-
     private List<String> getGroupWithSubgroups(String groupName) {
         String mainGroupId = getMainDeviceGroupId(groupName);
         List<String> s = getSubgroupsIds(mainGroupId, groupsMap);
@@ -125,7 +145,7 @@ public class LoAdapter {
         return group.map(Group::getId).orElse(DEFAULT_GROUP_ID);
     }
 
-    public List<String> getSubgroupsIds(String parentId, Map<String, Group> groupsMap) {
+    private List<String> getSubgroupsIds(String parentId, Map<String, Group> groupsMap) {
         List<String> groupsIds = new ArrayList<>();
         List<Group> values = new ArrayList<>(groupsMap.values());
         for (Group currentGroup : values) {
@@ -138,16 +158,5 @@ public class LoAdapter {
             }
         }
         return groupsIds;
-    }
-
-    public void startListeningForMessages() {
-        LOG.info("Starting listening for messages...");
-        DataManagementFifo dataManagementFifo = loApiClient.getDataManagementFifo();
-        dataManagementFifo.connectAndSubscribe();
-    }
-
-    public void connect() {
-        DataManagementFifo dataManagementFifo = loApiClient.getDataManagementFifo();
-        dataManagementFifo.connect();
     }
 }
