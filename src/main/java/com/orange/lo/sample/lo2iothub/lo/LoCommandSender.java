@@ -28,12 +28,12 @@ public class LoCommandSender {
 
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-    private final LOApiClient loApiClient;
     private final ObjectMapper objectMapper;
     private final RetryPolicy<Void> commandRetryPolicy;
+    private final LoAdapter loAdapter;
 
-    public LoCommandSender(LOApiClient loApiClient, ObjectMapper objectMapper, RetryPolicy<Void> commandRetryPolicy) {
-        this.loApiClient = loApiClient;
+    public LoCommandSender(LoAdapter loAdapter, ObjectMapper objectMapper, RetryPolicy<Void> commandRetryPolicy) {
+        this.loAdapter = loAdapter;
         this.objectMapper = objectMapper;
         this.commandRetryPolicy = commandRetryPolicy;
     }
@@ -43,9 +43,7 @@ public class LoCommandSender {
             Fallback<Void> objectFallback = Fallback.ofException(e -> new CommandException(e.getLastFailure()));
             Failsafe.with(objectFallback, commandRetryPolicy).run(() -> {
                 CommandAddRequest commandAddRequest = objectMapper.readValue(command, CommandAddRequest.class);
-                DeviceManagement deviceManagement = loApiClient.getDeviceManagement();
-                Commands commands = deviceManagement.getCommands();
-                commands.addCommand(deviceId, commandAddRequest);
+                loAdapter.sendCommand(deviceId, commandAddRequest);
             });
             return IotHubMessageResult.COMPLETE;
         } catch (CommandException e) {

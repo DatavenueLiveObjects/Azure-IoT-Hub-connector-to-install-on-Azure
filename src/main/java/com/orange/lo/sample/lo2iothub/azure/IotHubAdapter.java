@@ -36,9 +36,9 @@ public class IotHubAdapter {
         this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
     }
 
-    public void sendMessage(String loClientId, String message) {
+    public void sendMessage(String loClientId, int loMessageId, String message) {
         DeviceClientManager deviceClientManager = createOrGetDeviceClientManager(loClientId);
-        deviceClientManager.sendMessage(message);
+        deviceClientManager.sendMessage(loMessageId, message);
     }
 
     public void deleteDevice(String deviceId) {

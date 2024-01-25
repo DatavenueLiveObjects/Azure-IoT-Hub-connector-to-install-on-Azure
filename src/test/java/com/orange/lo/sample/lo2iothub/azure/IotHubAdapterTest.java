@@ -10,7 +10,6 @@ package com.orange.lo.sample.lo2iothub.azure;
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
 import com.microsoft.azure.sdk.iot.service.registry.Device;
 import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +28,7 @@ import static org.mockito.Mockito.*;
 class IotHubAdapterTest {
 
     private static final String DEVICE_ID = "iot-device-id";
+    private static final int MESSAGE_ID = 1;
     public static final String CONNECTION_STRING = "HostName=azure-devices.net;DeviceId=iot-device-id;SharedAccessKey=b3Jhbmdl";
 
     @Mock
@@ -59,9 +59,9 @@ class IotHubAdapterTest {
 
         String message = "{\"metadata\":{\"source\":\"iot-device-id\"}}";
 
-        iotHubAdapter.sendMessage(DEVICE_ID, message);
+        iotHubAdapter.sendMessage(DEVICE_ID, MESSAGE_ID, message);
 
-        verify(deviceClientManager, times(1)).sendMessage(any());
+        verify(deviceClientManager, times(1)).sendMessage(eq(MESSAGE_ID), any());
     }
 
     @Test
