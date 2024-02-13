@@ -100,9 +100,9 @@ public class ApplicationConfig {
                             liveObjectsProperties.isDeviceSynchronization(),
                             connectorHealthActuatorEndpoint
                     );
-
+                    MessageHandler dataManagementFifoCallback = new MessageHandler(iotHubAdapter, counters);
                     LOApiClientParameters loApiClientParameters = loApiClientParameters(liveObjectsProperties,
-                            azureIotHubProperties, iotHubAdapter, loAdapter);
+                            azureIotHubProperties, dataManagementFifoCallback);
                     LOApiClient loApiClient = new LOApiClient(loApiClientParameters);
 
                     connectorHealthActuatorEndpoint.addLoApiClient(loApiClient);
@@ -117,7 +117,7 @@ public class ApplicationConfig {
                         LOG.error("Problem with connection. Check LO credentials", e);
                         problemWithConnection = true;
                     }
-
+                    dataManagementFifoCallback.setLoAdapter(loAdapter);
                     LoCommandSender loCommandSender = new LoCommandSender(loAdapter, objectMapper, commandRetryPolicy);
                     deviceClientManager.setLoCommandSender(loCommandSender);
                     deviceClientManager.setLoAdapter(loAdapter);
@@ -156,12 +156,13 @@ public class ApplicationConfig {
     }
 
     private LOApiClientParameters loApiClientParameters(LiveObjectsProperties loProperties,
-                                                        AzureIotHubProperties azureIotHubProperties, IotHubAdapter iotHubAdapter, LoAdapter loAdapter) {
+                                                        AzureIotHubProperties azureIotHubProperties, MessageHandler dataManagementFifoCallback) {
 
         List<String> topics = Lists.newArrayList(azureIotHubProperties.getLoMessagesTopic());
         if (loProperties.isDeviceSynchronization()) {
             topics.add(azureIotHubProperties.getLoDevicesTopic());
         }
+
         return LOApiClientParameters.builder()
                 .hostname(loProperties.getHostname())
                 .apiKey(loProperties.getApiKey())
@@ -172,7 +173,7 @@ public class ApplicationConfig {
                 .connectionTimeout(loProperties.getConnectionTimeout())
                 .mqttPersistenceDataDir(loProperties.getMqttPersistenceDir())
                 .topics(topics)
-                .dataManagementMqttCallback(new MessageHandler(iotHubAdapter, loAdapter, counters))
+                .dataManagementMqttCallback(dataManagementFifoCallback)
                 .connectorType(loProperties.getConnectorType())
                 .connectorVersion(getConnectorVersion())
                 .build();
