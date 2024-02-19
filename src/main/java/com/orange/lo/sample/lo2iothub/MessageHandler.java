@@ -9,6 +9,7 @@ package com.orange.lo.sample.lo2iothub;
 
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
+import com.orange.lo.sample.lo2iothub.exceptions.IotDeviceProviderException;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
 import com.orange.lo.sdk.fifomqtt.DataManagementFifoCallback;
@@ -32,14 +33,17 @@ public class MessageHandler implements DataManagementFifoCallback {
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private final IotHubAdapter iotHubAdapter;
-    private final LoAdapter loAdapter;
+    private LoAdapter loAdapter;
     private final Counters counterProvider;
 
-    public MessageHandler(IotHubAdapter iotHubAdapter, LoAdapter loAdapter, Counters counterProvider) {
+    public MessageHandler(IotHubAdapter iotHubAdapter, Counters counterProvider) {
         this.iotHubAdapter = iotHubAdapter;
-        this.loAdapter = loAdapter;
         this.counterProvider = counterProvider;
     }
+    public void setLoAdapter(LoAdapter loAdapter) {
+        this.loAdapter = loAdapter;
+    }
+
 
     @Override
     public void onMessage(int loMessageId, String message) {
@@ -81,29 +85,37 @@ public class MessageHandler implements DataManagementFifoCallback {
     }
 
     private void handleDeviceCreationEvent(int loMessageId, String message) {
-        Optional<String> deviceId = getDeviceId(message);
-        deviceId.ifPresent(iotHubAdapter::createOrGetDeviceClientManager);
-        loAdapter.sendMessageAck(loMessageId);
+        try {
+            String deviceId = getDeviceId(message);
+            iotHubAdapter.createOrGetDeviceClientManager(deviceId);
+        } catch (JSONException e) {
+            LOG.error("Cannot create device because of no device id in payload");
+        } catch (Exception e) {
+            LOG.error("Cannot create device", e);
+        } finally {
+            loAdapter.sendMessageAck(loMessageId);
+        }
     }
 
     private void handleDeviceRemovalEvent(int loMessageId, String message) {
-        Optional<String> deviceId = getDeviceId(message);
-        deviceId.ifPresent(iotHubAdapter::deleteDevice);
-        loAdapter.sendMessageAck(loMessageId);
+        try {
+            String deviceId = getDeviceId(message);
+            iotHubAdapter.deleteDevice(deviceId);
+        } catch (JSONException e) {
+            LOG.error("Cannot delete device because of no device id in payload");
+        } catch (Exception e) {
+            LOG.error("Cannot delete device", e);
+        } finally {
+            loAdapter.sendMessageAck(loMessageId);
+        }
     }
 
     private static String getSourceDeviceId(String msg) throws JSONException {
         return new JSONObject(msg).getJSONObject("metadata").getString("source");
     }
 
-    private static Optional<String> getDeviceId(String msg) {
-        String id = null;
-        try {
-            id = new JSONObject(msg).getString(DEVICE_ID_FIELD);
-        } catch (JSONException e) {
-            LOG.error("No device id in payload");
-        }
-        return Optional.ofNullable(id);
+    private static String getDeviceId(String msg) throws JSONException {
+        return new JSONObject(msg).getString(DEVICE_ID_FIELD);
     }
 
     private static String getMessageType(String msg) {
