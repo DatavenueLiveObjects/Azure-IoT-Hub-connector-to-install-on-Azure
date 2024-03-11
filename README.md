@@ -28,11 +28,12 @@ The software is an open source toolbox which has to be integrated into an end to
 Live Objects platform supports load balancing between multiple MQTT subscribers.
 
 ## Technologies
-* Java 8
-* Spring Boot 2.4.4
-* Microsoft Azure SDK IoT 1.22.0
-* Microsoft Application Insights Java SDK Spring Boot Starter 2.5.1
-* Azure Metrics Spring Boot Starter 2.2.1
+* Java 21
+* Spring Boot 3.2.3
+* Microsoft Iot Hub Java Service SDK 2.1.7
+* Microsoft IoT Hub Java Device Client 2.4.1
+* Microsoft Application Insights Java SDK Spring Boot Starter 2.6.4
+* Azure Metrics Spring Boot Starter 2.3.5
 
 ## Requirements
 In order to run the connector you need to have: 
@@ -42,8 +43,8 @@ In order to run the connector you need to have:
 * **Application Insights resource created (per each Iot Hub)** (creation process is described in official [documentation](https://docs.microsoft.com/pl-pl/azure/azure-monitor/app/create-new-resource)) 
 * **App Service plan created (per each Iot Hub)** (creation process is described in official [documentation](https://docs.microsoft.com/en-us/azure/app-service/app-service-plan-manage))
 * **Development tools (only when building the package)**
- * **Java SE Development Kit 8**
- * **Apache Maven**
+* **Java SE Development Kit 21**
+* **Apache Maven**
 
 ## Getting the installation package
 
@@ -87,52 +88,51 @@ All configuration can be found in **application.yaml** file located in src/main/
 8          qos: 1
 9          keep-alive-interval-seconds: 30
 10         page-size: 20
-11         synchronization-device-interval: 10
-12         mqtt-persistence-dir: ${basedir:.}/temp/
-13  
-14       azure-iot-hub-list:
-15         -
-16           iot-connection-string: YOUR_IOT_CONNECTION_STRING
-17           iot-host-name: YOUR_IOT_HOST_NAME
-18           synchronization-thread-pool-size: 40
-19           device-client-connection-timeout: 5000
-20           tagPlatformKey: platform
-21           tagPlatformValue: LiveObjectsGroupIoT1
-22    
-23           lo-messages-topic: MESSAGES_TOPIC
-24           lo-devices-topic: DEVICES_TOPIC
-25           lo-devices-group: DEVICES_GROUP
-26
-27         -
-28           iot-connection-string: YOUR_IOT_CONNECTION_STRING
-29           iot-host-name: YOUR_IOT_HOST_NAME
-30           synchronization-thread-pool-size: 40
-31           device-client-connection-timeout: 5000
-32           tagPlatformKey: platform
-33           tagPlatformValue: LiveObjectsGroupIoT1
-34    
-35           lo-messages-topic: MESSAGES_TOPIC
-36           lo-devices-topic: DEVICES_TOPIC
-37           lo-devices-group: DEVICES_GROUP
-38
-39   azure:
-40     application-insights:
-41       instrumentation-key: YOUR_INSTMENTATION_KEY
-42       channel:
-43         in-process:
-44           developer-mode: true
-45           max-telemetry-buffer-capacity: 500
-46           flush-interval-in-seconds: 5
-47
-48   management:
-49     endpoints:
-50       web:
-51         exposure:
-52           include: "*"
-53
-54   spring:
-55     application:
-56       name: Lo2IotHub
+11         device-synchronization: true
+12         device-synchronization-interval: 86400 # in seconds - 24h
+13         mqtt-persistence-dir: ${basedir:.}/temp/
+14    
+15      azure-iot-hub-list:
+16        -
+17          iot-connection-string: YOUR_IOT_CONNECTION_STRING
+18          iot-host-name: YOUR_IOT_HOST_NAME
+19          device-registration-thread-pool-size: 10
+20          device-registration-period: 200 # in milliseconds - 200ms
+21          device-reestablish-session-delay: 10000 # in milliseconds - 10s
+22          device-client-connection-timeout: 5000
+23          message-expiry-time: 60000 # in milliseconds - 60s
+24          message-send-max-attempts: 10
+25          message-resend-delay: 10000 # in milliseconds - 10s
+26          tagPlatformKey: platform
+27          tagPlatformValue: LiveObjectsGroupIoT1
+28        
+29          lo-messages-topic: MESSAGES_TOPIC
+30          lo-devices-topic: DEVICES_TOPIC
+31          lo-devices-group: DEVICES_GROUP
+32    
+33        -
+34          iot-connection-string: YOUR_IOT_CONNECTION_STRING
+35          iot-host-name: YOUR_IOT_HOST_NAME
+36          device-registration-thread-pool-size: 10
+37          device-registration-period: 200 # in milliseconds - 200ms
+38          device-reestablish-session-delay: 10000 # in milliseconds - 10s
+39          device-client-connection-timeout: 5000
+40          message-expiry-time: 60000 # in milliseconds - 60s
+41          message-send-max-attempts: 10
+42          message-resend-delay: 10000 # in milliseconds - 10s
+43          tagPlatformKey: platform
+44          tagPlatformValue: LiveObjectsGroupIoT1
+45    
+46          lo-messages-topic: MESSAGES_TOPIC
+47          lo-devices-topic: DEVICES_TOPIC
+48          lo-devices-group: DEVICES_GROUP
+49    
+50     azure:
+51       application-insights:
+52         enabled: true
+53         instrumentation-key: YOUR_INSTMENTATION_KEY
+54      
+...
 ```
 
 #### hostname
@@ -166,7 +166,7 @@ This value, measured in seconds, defines the maximum time interval between messa
 #### page-size
 Maximum number of devices in single response. Max 1000
 
-#### synchronization-device-interval
+#### device-synchronization-interval
 Controls the interval (in seconds) at which device synchronization process starts.
 
 #### iot-connection-string
@@ -179,8 +179,8 @@ The `iot-host-name` can be found in the details of IoT Hub:
 
 ![IoT Hub 1](./assets/iot_hub_1.png)
 
-#### synchronization-thread-pool-size 
-How many threads will be used in devices synchronization process
+#### device-registration-thread-pool-size 
+How many threads will be used in devices registration process
 
 #### device-client-connection-timeout
 The length of time, in milliseconds, that any given operation will expire in. These operations include reconnecting upon a connection drop and sending a message.
@@ -293,22 +293,22 @@ You can deploy this connector wherever you want (local server, cloud provider et
   ```
 - Copy the file to the virtual machine ([documentation](https://docs.microsoft.com/pl-pl/azure/virtual-machines/linux/copy-files-to-linux-vm-using-scp)):
   ```
-  scp target/lo2iot-1.0.zip azureuser@YOUR_MACHINE_IP:~
+  scp target/lo2iot-[VERSION].zip azureuser@YOUR_MACHINE_IP:~
   ```
 - Install unzip and java  
   ```
   sudo apt-get install unzip
   ```
   ```
-  sudo apt-get install openjdk-11-jdk -y
+  sudo apt-get install openjdk-21-jdk -y
   ```
 - Unpack the installation package:
   ```
-  unzip lo2iot-1.0.zip 
+  unzip lo2iot-[VERSION].zip 
   ```
 - Run `start.sh` script:
   ```
-  ./lo2iot-1.0/bin/app.sh
+  ./lo2iot-[VERSION]/bin/app.sh
   ```
 
 If you want to stop and completely delete this machine you should run:

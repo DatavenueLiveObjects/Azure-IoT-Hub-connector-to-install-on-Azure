@@ -73,7 +73,7 @@ public class ApplicationConfig {
     }
 
     @Bean
-    public void init() {
+    public Object init() {
         RetryPolicy<Void> commandRetryPolicy = restCommandRetryPolicy();
         TaskScheduler taskScheduler = taskScheduler();
         RetryPolicy<List<Group>> groupRetryPolicy = restGroupRetryPolicy();
@@ -144,6 +144,7 @@ public class ApplicationConfig {
                 }
             });
         });
+        return new Object();
     }
 
     private IoTDeviceProvider createIotDeviceProvider(AzureIotHubProperties azureIotHubProperties) {
