@@ -1,13 +1,13 @@
-COMPONENT                               | VERSION       | LICENCE                    | URL
+COMPONENT                                         | VERSION       | LICENCE                    | URL
 ----------------------------------------------------------------------------------------------------------------------------------------------
-Spring Boot                             | 2.4.4         | Apache License             | Version 2.0, https://www.apache.org/licenses/LICENSE-2.0
-Iot Hub Java Service SDK                | 1.18.0        | MIT License                | http://opensource.org/licenses/MIT
-IoT Hub Java Device Client              | 1.18.0        | MIT License                | http://opensource.org/licenses/MIT
-azure-eventhubs                         | 2.3.2         | MIT license                | http://www.opensource.org/licenses/mit-license.php
-applicationinsights-spring-boot-starter | 2.5.1         | MIT License                | http://www.opensource.org/licenses/mit-license.php
-azure-spring-boot-metrics-starter       | 2.2.1         | MIT                        | https://github.com/Microsoft/azure-spring-b
-Apache Commons Text                     | 1.9           | Apache License 2.0         | http://www.apache.org/licenses/LICENSE-2.0.txt
-Failsafe                                | 2.4.0         | Apache License 2.0         | https://www.apache.org/licenses/LICENSE-2.0
-Spring Boot Starter Test                | 2.4.4         | Apache License 2.0         | https://www.apache.org/licenses/LICENSE-2.0
-ArchUnit                                | 0.17.0        | Apache License             | Version 2.0, https://www.apache.org/licenses/LICENSE-2.0
-ArchUnit                                | 0.17.0        | BSD                        | https://asm.ow2.io/license.html
+Spring Boot                                       | 3.2.3         | Apache License 2.0         | https://www.apache.org/licenses/LICENSE-2.0
+Iot Hub Java Service SDK                          | 2.1.7         | MIT License                | http://opensource.org/licenses/MIT
+IoT Hub Java Device Client                        | 2.4.1         | MIT License                | http://opensource.org/licenses/MIT
+Application Insights Java SDK Spring Boot Starter | 2.6.4         | MIT License                | http://www.opensource.org/licenses/mit-license.php
+Azure Metrics Spring Boot Starter                 | 2.3.5         | MIT License                | http://opensource.org/licenses/MIT
+Maven Model                                       | 3.9.6         | Apache License 2.0         | http://www.apache.org/licenses/LICENSE-2.0.txt
+Apache Commons Text                               | 1.11.0        | Apache License 2.0         | http://www.apache.org/licenses/LICENSE-2.0.txt
+Failsafe                                          | 2.4.4         | Apache License 2.0         | https://www.apache.org/licenses/LICENSE-2.0
+Spring Boot Starter Test                          | 3.2.3         | Apache License 2.0         | https://www.apache.org/licenses/LICENSE-2.0
+ArchUnit                                          | 1.2.1         | Apache License 2.0         | https://www.apache.org/licenses/LICENSE-2.0
+ArchUnit                                          | 1.2.1         | Apache License 2.0, BSD    | https://www.apache.org/licenses/LICENSE-2.0 https://asm.ow2.io/license.html
