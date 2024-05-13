@@ -7,77 +7,58 @@
 
 package com.orange.lo.sample.lo2iothub;
 
-import java.lang.invoke.MethodHandles;
-import java.time.Duration;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-
+import com.orange.lo.sample.lo2iothub.utils.MetricsProperties;
+import io.micrometer.cloudwatch2.CloudWatchConfig;
+import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
+import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.config.MeterFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 
-import io.micrometer.core.instrument.Clock;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.step.StepMeterRegistry;
-import io.micrometer.core.instrument.step.StepRegistryConfig;
+import java.lang.invoke.MethodHandles;
 
 @SpringBootApplication
 public class ConnectorApplication {
 
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private final MetricsProperties metricsProperties;
+
+    ConnectorApplication(MetricsProperties metricsProperties) {
+        this.metricsProperties = metricsProperties;
+    }
 
     public static void main(String[] args) {
         SpringApplication.run(ConnectorApplication.class, args);
     }
 
     @Bean
-    public StepRegistryConfig stepRegistryConfig() {
-        return new StepRegistryConfig() {
+    @Qualifier("counters")
+    public MeterRegistry meterRegistry() {
+        CloudWatchMeterRegistry cloudWatchMeterRegistry = new CloudWatchMeterRegistry(cloudWatchConfig(), Clock.SYSTEM, CloudWatchAsyncClient.create());
+        cloudWatchMeterRegistry.config()
+                .meterFilter(MeterFilter.deny(id -> !id.getName().startsWith("message")))
+                .commonTags(metricsProperties.getDimensionName(), metricsProperties.getDimensionValue());
+        return cloudWatchMeterRegistry;
+    }
 
-            @Override
-            public Duration step() {
-                return Duration.ofMinutes(1);
-            }
-
-            @Override
-            public String prefix() {
-                return "";
-            }
+    private CloudWatchConfig cloudWatchConfig() {
+        return new CloudWatchConfig() {
 
             @Override
             public String get(String key) {
                 return null;
             }
-        };
-    }
-
-    @Bean
-    @Qualifier("counters")
-    public StepMeterRegistry stepMeterRegistry() {
-        return new StepMeterRegistry(stepRegistryConfig(), Clock.SYSTEM) {
 
             @Override
-            protected TimeUnit getBaseTimeUnit() {
-                return TimeUnit.MILLISECONDS;
-            }
-
-            @Override
-            protected void publish() {
-                getMeters().stream().filter(m -> m.getId().getName().startsWith("message")).map(m -> get(m.getId().getName()).counter()).forEach(c -> LOG.info(c.getId().getName() + " = " + val(c)));
-            }
-
-            @Override
-            public void start(ThreadFactory threadFactory) {
-                super.start(Executors.defaultThreadFactory());
+            public String namespace() {
+                return metricsProperties.getNamespace();
             }
         };
-    }
-
-    private long val(Counter cnt) {
-        return Math.round(cnt.count());
     }
 }

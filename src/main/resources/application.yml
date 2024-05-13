@@ -47,6 +47,11 @@ tenant-list:
         lo-devices-topic: DEVICES_TOPIC
         lo-devices-group: DEVICES_GROUP
 
+metrics:
+  namespace: CCS
+  dimension-name: connector-id
+  dimension-value:
+
 azure:
   application-insights:
     enabled: true
