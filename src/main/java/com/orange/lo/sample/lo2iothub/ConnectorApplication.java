@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 
@@ -47,6 +48,7 @@ public class ConnectorApplication {
                 .build();
 
         CloudWatchMeterRegistry cloudWatchMeterRegistry = new CloudWatchMeterRegistry(cloudWatchConfig(), Clock.SYSTEM, cloudWatchAsyncClient);
+
         cloudWatchMeterRegistry.config()
                 .meterFilter(MeterFilter.deny(id -> !id.getName().startsWith("message")))
                 .commonTags(metricsProperties.getDimensionName(), metricsProperties.getDimensionValue());
