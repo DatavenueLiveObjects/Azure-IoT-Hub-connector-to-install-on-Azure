@@ -21,6 +21,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.regions.providers.AwsProfileRegionProvider;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 
 import java.lang.invoke.MethodHandles;
@@ -45,6 +46,7 @@ public class ConnectorApplication {
     public MeterRegistry meterRegistry() {
         CloudWatchAsyncClient cloudWatchAsyncClient = CloudWatchAsyncClient.builder()
                 .credentialsProvider(ProfileCredentialsProvider.create(SERVICE_PROFILE_NAME))
+                .region(new AwsProfileRegionProvider(null, SERVICE_PROFILE_NAME).getRegion())
                 .build();
 
         CloudWatchMeterRegistry cloudWatchMeterRegistry = new CloudWatchMeterRegistry(cloudWatchConfig(), Clock.SYSTEM, cloudWatchAsyncClient);
