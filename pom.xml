@@ -124,7 +124,7 @@
 		<url>https://github.com/DatavenueLiveObjects/Azure-IoT-Hub-connector-to-install-on-Azure.git</url>
 		<connection>scm:git:${project.scm.url}</connection>
 		<developerConnection>scm:git:${project.scm.url}</developerConnection>
-		<tag>v1.0</tag>
+		<tag>v1.31</tag>
 	</scm>
 
 	<profiles>
