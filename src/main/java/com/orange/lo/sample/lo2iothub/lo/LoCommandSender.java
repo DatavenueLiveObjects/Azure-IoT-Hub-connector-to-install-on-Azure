@@ -10,9 +10,6 @@ package com.orange.lo.sample.lo2iothub.lo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microsoft.azure.sdk.iot.device.IotHubMessageResult;
 import com.orange.lo.sample.lo2iothub.exceptions.CommandException;
-import com.orange.lo.sdk.LOApiClient;
-import com.orange.lo.sdk.rest.devicemanagement.Commands;
-import com.orange.lo.sdk.rest.devicemanagement.DeviceManagement;
 import com.orange.lo.sdk.rest.model.CommandAddRequest;
 
 import java.lang.invoke.MethodHandles;
