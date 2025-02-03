@@ -145,7 +145,8 @@ public class MultiplexingClientManager implements IotHubConnectionStatusChangeCa
             if (!deviceClientManagersToRegister.isEmpty()) {
                 List<DeviceClient> deviceClientList = deviceClientManagersToRegister.stream().map(dcm -> dcm.getDeviceClient()).collect(Collectors.toList());
                 try {
-                    this.multiplexingClient.registerDeviceClients(deviceClientList);
+                    LOG.info("Starts device clients registration {} for multiplexing client: {}", deviceClientManagersToRegister.stream().map(dcm -> dcm.getDeviceClient().getConfig().getDeviceId()).collect(Collectors.toSet()), multiplexingClientId);
+                    this.multiplexingClient.registerDeviceClients(deviceClientList, 25000L);
                     this.multiplexedDeviceClientManagers.putAll(deviceClientManagersToRegister.stream().collect(Collectors.toMap(dcm -> dcm.getDeviceClient().getConfig().getDeviceId() , dcm -> dcm)));
                     LOG.info("Registered device clients {} for multiplexing client: {}", deviceClientManagersToRegister.stream().map(dcm -> dcm.getDeviceClient().getConfig().getDeviceId()).collect(Collectors.toSet()), multiplexingClientId);
                     deviceClientManagersToRegister.clear();
