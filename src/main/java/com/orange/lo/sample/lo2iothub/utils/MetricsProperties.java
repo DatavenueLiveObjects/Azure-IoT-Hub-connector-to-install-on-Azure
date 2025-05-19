@@ -9,6 +9,8 @@ public class MetricsProperties {
     private String namespace;
     private String dimensionName;
     private String dimensionValue;
+    private boolean sendToCloudwatch;
+    private boolean useServiceProfile;
 
     public String getNamespace() {
         return namespace;
@@ -32,5 +34,21 @@ public class MetricsProperties {
 
     public void setDimensionValue(String dimensionValue) {
         this.dimensionValue = dimensionValue;
+    }
+
+    public boolean isSendToCloudwatch() {
+        return sendToCloudwatch;
+    }
+
+    public void setSendToCloudwatch(boolean sendToCloudwatch) {
+        this.sendToCloudwatch = sendToCloudwatch;
+    }
+
+    public boolean isUseServiceProfile() {
+        return useServiceProfile;
+    }
+
+    public void setUseServiceProfile(boolean useServiceProfile) {
+        this.useServiceProfile = useServiceProfile;
     }
 }

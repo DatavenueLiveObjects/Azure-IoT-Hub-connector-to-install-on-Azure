@@ -53,6 +53,8 @@ azure:
     instrumentation-key: YOUR_INSTMENTATION_KEY
 
 metrics:
+  send-to-cloudwatch: false
+  use-service-profile: false
   namespace: CCS
   dimension-name: connector-id
   dimension-value:

@@ -40,6 +40,8 @@
     <logger name="com.microsoft.azure" level="ERROR" />
     <logger name="org.apache.qpid" level="FINE"/>
     <logger name="proton.trace" level="FINE" />
+    <Logger name="org.apache.catalina.core" level="WARN" />
+    <Logger name="org.springframework.boot.web.embedded.tomcat" level="WARN" />
 
     <root level="INFO">
         <appender-ref ref="STDOUT" />
