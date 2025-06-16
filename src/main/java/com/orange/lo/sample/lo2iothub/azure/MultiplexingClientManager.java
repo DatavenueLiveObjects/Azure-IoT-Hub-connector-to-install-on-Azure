@@ -11,7 +11,7 @@ import com.microsoft.azure.sdk.iot.device.*;
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
 import com.microsoft.azure.sdk.iot.device.exceptions.MultiplexingClientRegistrationException;
 import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
-import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
+import com.orange.lo.sample.lo2iothub.utils.Counters;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
@@ -36,7 +36,7 @@ public class MultiplexingClientManager implements IotHubConnectionStatusChangeCa
 
     private final MultiplexingClient multiplexingClient;
     private final Map<String, DeviceClientManager> multiplexedDeviceClientManagers;
-    private final ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
+    private final Counters counters;
     private final IoTDeviceProvider ioTDeviceProvider;
     private final int multiplexingClientId;
     private IotHubConnectionStatus multiplexedConnectionStatus;
@@ -46,10 +46,10 @@ public class MultiplexingClientManager implements IotHubConnectionStatusChangeCa
     private ScheduledExecutorService registerTaskScheduler = Executors.newScheduledThreadPool(1);
     private int reservations;
 
-    public MultiplexingClientManager(AzureIotHubProperties azureIotHubProperties, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint, IoTDeviceProvider ioTDeviceProvider) {
+    public MultiplexingClientManager(AzureIotHubProperties azureIotHubProperties, Counters counters, IoTDeviceProvider ioTDeviceProvider) {
         this.multiplexingClient = new MultiplexingClient(azureIotHubProperties.getIotHostName(), IotHubClientProtocol.AMQPS, null);
         this.multiplexedDeviceClientManagers = new HashMap<>();
-        this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
+        this.counters = counters;
         this.ioTDeviceProvider = ioTDeviceProvider;
         this.multiplexingClientId = multiplexingClientIndex.getAndIncrement();
         this.multiplexingClient.setConnectionStatusChangeCallback(this, this);
@@ -67,7 +67,7 @@ public class MultiplexingClientManager implements IotHubConnectionStatusChangeCa
         IotHubConnectionStatusChangeReason statusChangeReason = connectionStatusChangeContext.getNewStatusReason();
         Throwable throwable = connectionStatusChangeContext.getCause();
 
-        connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(multiplexingClient, multiplexedConnectionStatus);
+        counters.setCloudConnectionStatus(IotHubConnectionStatus.CONNECTED.equals(multiplexedConnectionStatus));
 
         if (throwable == null) {
             LOG.info("Connection status changed for multiplexing client: {}, status: {}, reason: {}", multiplexingClientId, multiplexedConnectionStatus, statusChangeReason);

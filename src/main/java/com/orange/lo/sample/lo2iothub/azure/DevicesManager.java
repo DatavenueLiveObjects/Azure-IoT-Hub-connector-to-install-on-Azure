@@ -20,10 +20,7 @@ import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
-import net.jodah.failsafe.Fallback;
-import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,14 +31,12 @@ public class DevicesManager {
     private List<MultiplexingClientManager> multiplexingClientManagerList;
     private LoCommandSender loCommandSender;
 
-    private final ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
     private final IoTDeviceProvider ioTDeviceProvider;
     private Counters counterProvider;
     private LoAdapter loAdapter;
 
-    public DevicesManager(AzureIotHubProperties azureIotHubProperties, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider) throws IotHubClientException {
+    public DevicesManager(AzureIotHubProperties azureIotHubProperties, IoTDeviceProvider ioTDeviceProvider, Counters counterProvider) throws IotHubClientException {
         this.azureIotHubProperties = azureIotHubProperties;
-        this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
         this.ioTDeviceProvider = ioTDeviceProvider;
         this.counterProvider = counterProvider;
         this.multiplexingClientManagerList = Collections.synchronizedList(new LinkedList<>());
@@ -95,7 +90,7 @@ public class DevicesManager {
                 return multiplexingClientManager;
             }
         }
-        MultiplexingClientManager freeMultiplexingClientManager = new MultiplexingClientManager(azureIotHubProperties, connectorHealthActuatorEndpoint, ioTDeviceProvider);
+        MultiplexingClientManager freeMultiplexingClientManager = new MultiplexingClientManager(azureIotHubProperties, counterProvider, ioTDeviceProvider);
         freeMultiplexingClientManager.makeReservation();
         multiplexingClientManagerList.add(freeMultiplexingClientManager);
         return freeMultiplexingClientManager;
