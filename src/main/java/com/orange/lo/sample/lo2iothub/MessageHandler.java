@@ -9,13 +9,11 @@ package com.orange.lo.sample.lo2iothub;
 
 import com.orange.lo.sample.lo2iothub.azure.IotHubAdapter;
 import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
-import com.orange.lo.sample.lo2iothub.exceptions.IotDeviceProviderException;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
 import com.orange.lo.sdk.fifomqtt.DataManagementFifoCallback;
 
 import java.lang.invoke.MethodHandles;
-import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

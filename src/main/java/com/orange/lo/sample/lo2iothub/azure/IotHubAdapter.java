@@ -8,10 +8,9 @@
 package com.orange.lo.sample.lo2iothub.azure;
 
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
-import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.microsoft.azure.sdk.iot.service.registry.Device;
 import com.orange.lo.sample.lo2iothub.exceptions.DeviceSynchronizationException;
-import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
+import com.orange.lo.sample.lo2iothub.utils.Counters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,13 +26,13 @@ public class IotHubAdapter {
     private final IoTDeviceProvider ioTDeviceProvider;
     private final boolean deviceSynchronization;
     private final DevicesManager devicesManager;
-    private final ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
+    private final Counters counters;
 
-    public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider, DevicesManager deviceClientManager, boolean deviceSynchronization, ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint) {
+    public IotHubAdapter(IoTDeviceProvider ioTDeviceProvider, DevicesManager deviceClientManager, boolean deviceSynchronization, Counters counters) {
         this.ioTDeviceProvider = ioTDeviceProvider;
         this.devicesManager = deviceClientManager;
         this.deviceSynchronization = deviceSynchronization;
-        this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
+        this.counters = counters;
     }
 
     public void sendMessage(String loClientId, int loMessageId, String message) {
@@ -65,7 +64,7 @@ public class IotHubAdapter {
                     device = ioTDeviceProvider.getDevice(deviceId);
                 } catch (Exception e) {
                     LOG.debug("Problem with connection. Check IoT Hub credentials ", e);
-                    connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
+                    counters.setCloudConnectionStatus(false);
                 }
 
                 // no device in iot hub

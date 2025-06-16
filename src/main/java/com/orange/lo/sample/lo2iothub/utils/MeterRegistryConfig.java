@@ -11,6 +11,8 @@ import io.micrometer.cloudwatch2.CloudWatchConfig;
 import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
 import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.config.MeterFilter;
 import io.micrometer.core.instrument.step.StepMeterRegistry;
@@ -30,15 +32,19 @@ import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 
 import java.lang.invoke.MethodHandles;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 @Configuration
 public class MeterRegistryConfig {
 
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     private static final String AWS_SERVICE_PROFILE_NAME = "service-profile";
+    public static final String MESSAGE_METRICS_PREFIX = "message";
+    public static final String STATUS_METRICS_PREFIX = "status";
     private final MetricsProperties metricsProperties;
 
     public MeterRegistryConfig(MetricsProperties metricsProperties) {
@@ -66,7 +72,7 @@ public class MeterRegistryConfig {
         CloudWatchMeterRegistry cloudWatchMeterRegistry = new CloudWatchMeterRegistry(cloudWatchConfig(), Clock.SYSTEM, cloudWatchAsyncClient);
 
         cloudWatchMeterRegistry.config()
-                .meterFilter(MeterFilter.deny(id -> !id.getName().startsWith("message")))
+                .meterFilter(MeterFilter.deny(id -> !isAConnectorMetric(id)))
                 .commonTags(metricsProperties.getDimensionName(), metricsProperties.getDimensionValue());
         return cloudWatchMeterRegistry;
     }
@@ -98,6 +104,11 @@ public class MeterRegistryConfig {
         };
     }
 
+    private static boolean isAConnectorMetric(Meter.Id id) {
+        String name = id.getName();
+        return name.startsWith(MESSAGE_METRICS_PREFIX) || name.startsWith(STATUS_METRICS_PREFIX);
+    }
+
     private StepMeterRegistry stepMeterRegistry() {
         StepMeterRegistry stepMeterRegistry = new StepMeterRegistry(stepRegistryConfig(), Clock.SYSTEM) {
 
@@ -108,10 +119,22 @@ public class MeterRegistryConfig {
 
             @Override
             protected void publish() {
-                getMeters().stream()
-                        .filter(m -> m.getId().getName().startsWith("message"))
-                        .map(m -> get(m.getId().getName()).counter())
-                        .forEach(c -> LOG.info("{} = {}", c.getId().getName(), val(c)));
+                Stream<String> message = getMeters().stream()
+                        .filter(m -> m.getId().getName().startsWith(MESSAGE_METRICS_PREFIX))
+                        .map(m -> {
+                            Counter counter = get(m.getId().getName()).counter();
+                            return counter.getId().getName() + " = " + val(counter);
+                        });
+
+                Stream<String> status = getMeters().stream()
+                        .filter(m -> m.getId().getName().startsWith(STATUS_METRICS_PREFIX))
+                        .map(m -> {
+                            Gauge gauge = get(m.getId().getName()).gauge();
+                            return gauge.getId().getName() + " = " + Math.round(gauge.value());
+                        });
+
+                List<String> collect = Stream.concat(message, status).toList();
+                collect.forEach(LOG::info);
             }
 
             @Override

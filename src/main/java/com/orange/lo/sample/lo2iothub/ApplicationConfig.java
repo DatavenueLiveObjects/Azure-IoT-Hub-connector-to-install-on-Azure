@@ -10,7 +10,6 @@ package com.orange.lo.sample.lo2iothub;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
-import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
 import com.microsoft.azure.sdk.iot.service.registry.RegistryClient;
 import com.microsoft.azure.sdk.iot.service.twin.TwinClient;
 import com.orange.lo.sample.lo2iothub.azure.*;
@@ -18,10 +17,11 @@ import com.orange.lo.sample.lo2iothub.exceptions.InitializationException;
 import com.orange.lo.sample.lo2iothub.lo.LiveObjectsProperties;
 import com.orange.lo.sample.lo2iothub.lo.LoAdapter;
 import com.orange.lo.sample.lo2iothub.lo.LoCommandSender;
-import com.orange.lo.sample.lo2iothub.utils.ConnectorHealthActuatorEndpoint;
+import com.orange.lo.sample.lo2iothub.lo.LoMqttReconnectHandler;
 import com.orange.lo.sample.lo2iothub.utils.Counters;
 import com.orange.lo.sdk.LOApiClient;
 import com.orange.lo.sdk.LOApiClientParameters;
+import com.orange.lo.sdk.mqtt.DataManagementReconnectCallback;
 import com.orange.lo.sdk.rest.model.Device;
 import com.orange.lo.sdk.rest.model.Group;
 
@@ -57,13 +57,11 @@ public class ApplicationConfig {
     private Counters counters;
     private ApplicationProperties applicationProperties;
     private ObjectMapper objectMapper;
-    private ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint;
 
-    public ApplicationConfig(Counters counterProvider, ApplicationProperties applicationProperties, MappingJackson2HttpMessageConverter springJacksonConverter,
-                             ConnectorHealthActuatorEndpoint connectorHealthActuatorEndpoint) {
+    public ApplicationConfig(Counters counterProvider, ApplicationProperties applicationProperties,
+                             MappingJackson2HttpMessageConverter springJacksonConverter) {
         this.counters = counterProvider;
         this.applicationProperties = applicationProperties;
-        this.connectorHealthActuatorEndpoint = connectorHealthActuatorEndpoint;
         this.objectMapper = springJacksonConverter.getObjectMapper();
     }
 
@@ -92,20 +90,19 @@ public class ApplicationConfig {
 
                     IoTDeviceProvider ioTDeviceProvider = createIotDeviceProvider(azureIotHubProperties);
 
-                    DevicesManager deviceClientManager = new DevicesManager(azureIotHubProperties, connectorHealthActuatorEndpoint, ioTDeviceProvider, counters);
+                    DevicesManager deviceClientManager = new DevicesManager(azureIotHubProperties, ioTDeviceProvider, counters);
 
                     IotHubAdapter iotHubAdapter = new IotHubAdapter(
                             ioTDeviceProvider,
                             deviceClientManager,
                             liveObjectsProperties.isDeviceSynchronization(),
-                            connectorHealthActuatorEndpoint
+                            counters
                     );
                     MessageHandler dataManagementFifoCallback = new MessageHandler(iotHubAdapter, counters);
+                    DataManagementReconnectCallback reconnectHandler = new LoMqttReconnectHandler(counters);
                     LOApiClientParameters loApiClientParameters = loApiClientParameters(liveObjectsProperties,
-                            azureIotHubProperties, dataManagementFifoCallback);
+                            azureIotHubProperties, dataManagementFifoCallback, reconnectHandler);
                     LOApiClient loApiClient = new LOApiClient(loApiClientParameters);
-
-                    connectorHealthActuatorEndpoint.addLoApiClient(loApiClient);
 
 
                     boolean problemWithConnection = false;
@@ -130,7 +127,8 @@ public class ApplicationConfig {
                     } catch (Exception e) {
                         LOG.error("Problem with connection. Check iot hub credentials", e);
                         problemWithConnection = true;
-                        connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
+//                        connectorHealthActuatorEndpoint.addMultiplexingConnectionStatus(null, IotHubConnectionStatus.DISCONNECTED);
+                        counters.setCloudConnectionStatus(false);
                     }
 
                     if (!problemWithConnection) {
@@ -157,7 +155,9 @@ public class ApplicationConfig {
     }
 
     private LOApiClientParameters loApiClientParameters(LiveObjectsProperties loProperties,
-                                                        AzureIotHubProperties azureIotHubProperties, MessageHandler dataManagementFifoCallback) {
+                                                        AzureIotHubProperties azureIotHubProperties,
+                                                        MessageHandler dataManagementFifoCallback,
+                                                        DataManagementReconnectCallback reconnectHandler) {
 
         List<String> topics = Lists.newArrayList(azureIotHubProperties.getLoMessagesTopic());
         if (loProperties.isDeviceSynchronization()) {
@@ -177,6 +177,7 @@ public class ApplicationConfig {
                 .dataManagementMqttCallback(dataManagementFifoCallback)
                 .connectorType(loProperties.getConnectorType())
                 .connectorVersion(getConnectorVersion())
+                .dataManagementReconnectCallback(reconnectHandler)
                 .build();
     }
 
