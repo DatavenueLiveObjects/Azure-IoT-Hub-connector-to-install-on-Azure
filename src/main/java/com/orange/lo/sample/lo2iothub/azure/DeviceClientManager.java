@@ -7,6 +7,7 @@
 
 package com.orange.lo.sample.lo2iothub.azure;
 
+import com.azure.core.http.ContentType;
 import com.microsoft.azure.sdk.iot.device.*;
 import com.microsoft.azure.sdk.iot.device.exceptions.IotHubClientException;
 import com.microsoft.azure.sdk.iot.device.transport.IotHubConnectionStatus;
@@ -82,6 +83,7 @@ public class DeviceClientManager implements MessageCallback, IotHubConnectionSta
 
     public void sendMessage(int loMessageId, String loMessage) {
         Message message = new Message(loMessage);
+        message.setContentType(ContentType.APPLICATION_JSON);
         sendMessage(loMessageId, message);
     }
 
